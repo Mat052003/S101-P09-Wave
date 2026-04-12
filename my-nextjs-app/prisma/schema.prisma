@@ -6,14 +6,103 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─── USUARIO ───────────────────────────────────────────────────────
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?           // hash bcrypt — elemento criptográfico #1
+  image         String?
+  role          Role      @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  otpCodes      OtpCode[]
+  reservations  Reservation[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+// ─── CUENTA SSO (Google, GitHub, etc.) ───────────────────────────
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+// ─── SESIÓN JWT ───────────────────────────────────────────────────
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── CÓDIGO OTP ───────────────────────────────────────────────────
+model OtpCode {
+  id        String   @id @default(cuid())
+  userId    String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── HOTEL ────────────────────────────────────────────────────────
 model Hotel {
-  id          String   @id @default(cuid())
-  name        String
-  description String
-  location    String
-  price       Float
-  stars       Int      @default(5)
-  images      String[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String        @id @default(cuid())
+  name         String
+  description  String
+  location     String
+  price        Float
+  stars        Int           @default(5)
+  images       String[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  reservations Reservation[]
+}
+
+// ─── RESERVA ──────────────────────────────────────────────────────
+model Reservation {
+  id         String            @id @default(cuid())
+  userId     String
+  hotelId    String
+  checkIn    DateTime
+  checkOut   DateTime
+  guests     Int               @default(1)
+  totalPrice Float
+  status     ReservationStatus @default(PENDING)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hotel Hotel @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
 }
