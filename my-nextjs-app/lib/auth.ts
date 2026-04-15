@@ -1,4 +1,4 @@
-// src/lib/auth.ts
+// lib/auth.ts
 // ─────────────────────────────────────────────────────────────────
 // ELEMENTOS CRIPTOGRÁFICOS USADOS EN ESTE ARCHIVO:
 //
@@ -21,13 +21,11 @@ import prisma from "./prisma";
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
 
-  // Elemento criptográfico #2: NextAuth usa NEXTAUTH_SECRET para
-  // firmar los JWT de sesión con HMAC-SHA256
   secret: process.env.NEXTAUTH_SECRET,
 
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 días
+    maxAge: 30 * 24 * 60 * 60,
   },
 
   pages: {
@@ -36,21 +34,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
 
   providers: [
-    // ── SSO con Google ────────────────────────────────────────────
-    // Elemento criptográfico #3: Google usa OAuth2 + OpenID Connect.
-    // Devuelve un id_token (JWT firmado con RS256 por Google)
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      // Permite vincular cuenta Google a un usuario que ya existe con email/contraseña
+      allowDangerousEmailAccountLinking: true,
     }),
 
-    // ── Login con email + contraseña ──────────────────────────────
     CredentialsProvider({
       name: "credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        email:    { label: "Email",      type: "email" },
         password: { label: "Contraseña", type: "password" },
-        otpCode: { label: "Código OTP", type: "text" },
+        otpCode:  { label: "Código OTP", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
@@ -59,39 +55,42 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           where: { email: credentials.email as string },
         });
 
-        if (!user || !user.password) return null;
+        // Si el usuario existe pero solo tiene cuenta Google (sin contraseña),
+        // mostramos un mensaje claro en vez del error genérico
+        if (!user) return null;
+        if (!user.password) {
+          // El usuario se registró con Google — no tiene contraseña local
+          throw new Error("Esta cuenta usa Google para iniciar sesión");
+        }
 
-        // Elemento criptográfico #1: bcrypt.compare() verifica la
-        // contraseña contra el hash almacenado (incluye salt)
+        // Elemento criptográfico #1: verificar contraseña con bcrypt
         const passwordOk = await bcrypt.compare(
           credentials.password as string,
           user.password
         );
         if (!passwordOk) return null;
 
-        // ── Verificar OTP ─────────────────────────────────────────
-        // Elemento criptográfico #4: el OTP fue generado con
-        // crypto.randomInt() (CSPRNG) al momento del login
+        // Elemento criptográfico #4: verificar OTP con CSPRNG
         if (credentials.otpCode) {
           const otp = await prisma.otpCode.findFirst({
             where: {
-              userId: user.id,
-              code: credentials.otpCode as string,
-              used: false,
+              userId:    user.id,
+              code:      credentials.otpCode as string,
+              used:      false,
               expiresAt: { gt: new Date() },
             },
           });
           if (!otp) return null;
           await prisma.otpCode.update({
             where: { id: otp.id },
-            data: { used: true },
+            data:  { used: true },
           });
         }
 
         return {
-          id: user.id,
+          id:    user.id,
           email: user.email,
-          name: user.name,
+          name:  user.name,
           image: user.image,
         };
       },
@@ -100,15 +99,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
   callbacks: {
     async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-      }
+      if (user) token.id = user.id;
       return token;
     },
     async session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.id as string;
-      }
+      if (token && session.user) session.user.id = token.id as string;
       return session;
     },
   },

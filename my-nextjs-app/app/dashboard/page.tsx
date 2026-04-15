@@ -1,8 +1,9 @@
-// src/app/dashboard/page.tsx
+// app/dashboard/page.tsx
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
+import LogoutButton from "./LogoutButton";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -21,8 +22,8 @@ export default async function DashboardPage() {
 
   const statusLabel: Record<string, { label: string; color: string }> = {
     PENDING:   { label: "Pendiente",  color: "bg-yellow-100 text-yellow-700" },
-    CONFIRMED: { label: "Confirmada", color: "bg-green-100 text-green-700"  },
-    CANCELLED: { label: "Cancelada",  color: "bg-red-100 text-red-700"      },
+    CONFIRMED: { label: "Confirmada", color: "bg-green-100 text-green-700"   },
+    CANCELLED: { label: "Cancelada",  color: "bg-red-100 text-red-700"       },
   };
 
   return (
@@ -32,11 +33,7 @@ export default async function DashboardPage() {
         <Link href="/" className="text-xl font-bold text-stone-900">
           onda<span className="text-amber-500">.</span>
         </Link>
-        <form action="/api/auth/signout" method="POST">
-          <button className="text-sm text-stone-500 hover:text-stone-900 font-medium transition-colors">
-            Cerrar sesión
-          </button>
-        </form>
+        <LogoutButton />
       </nav>
 
       <div className="max-w-4xl mx-auto px-6 py-10 space-y-8">
