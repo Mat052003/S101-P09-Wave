@@ -76,12 +76,24 @@ model Hotel {
   name         String
   description  String
   location     String
+  experienceType ExperienceType @default(RELAX)
   price        Float
   stars        Int           @default(5)
+  services     String[]       @default([])
+  exclusiveFeatures String[]  @default([])
   images       String[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   reservations Reservation[]
+}
+
+enum ExperienceType {
+  RELAX
+  WELLNESS
+  GASTRONOMIC
+  ADVENTURE
+  ROMANTIC
+  CULTURAL
 }
 
 // ─── RESERVA ──────────────────────────────────────────────────────
