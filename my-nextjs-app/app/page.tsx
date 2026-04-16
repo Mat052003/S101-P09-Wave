@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 import Image from "next/image";
 
 export default function Home() {
@@ -64,10 +63,3 @@ export default function Home() {
     </div>
   );
 }
-=======
-import HotelSearchAndCompare from "@/app/components/hotel-search-and-compare";
-
-export default function Home() {
-  return <HotelSearchAndCompare />;
-}
->>>>>>> Stashed changes
