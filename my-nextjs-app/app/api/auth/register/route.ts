@@ -1,55 +1,61 @@
-// src/app/api/auth/register/route.ts
+// app/api/auth/register/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import prisma from "@/lib/prisma";
-import * as bcrypt from "bcryptjs";
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, email, password } = await req.json();
+    const { name, email, password, role, phone, country, city, businessName, taxId, bio } = await req.json();
 
-    if (!name || !email || !password) {
-      return NextResponse.json(
-        { error: "Todos los campos son obligatorios" },
-        { status: 400 }
-      );
+    if (!name || !email || !password || !role) {
+      return NextResponse.json({ error: "Todos los campos obligatorios son requeridos" }, { status: 400 });
     }
 
-    // Verificar si el email ya existe
+    if (!["CLIENT", "ADMIN"].includes(role)) {
+      return NextResponse.json({ error: "Rol inválido" }, { status: 400 });
+    }
+
+    // Validaciones extra para admin
+    if (role === "ADMIN" && (!phone || !country || !city || !businessName)) {
+      return NextResponse.json({ error: "Los datos del negocio son obligatorios para anfitriones" }, { status: 400 });
+    }
+
     const exists = await prisma.user.findUnique({ where: { email } });
     if (exists) {
-      return NextResponse.json(
-        { error: "El email ya está registrado" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "El email ya está registrado" }, { status: 400 });
     }
 
-    // Elemento criptográfico #1: hashear contraseña con bcrypt
-    // saltRounds: 12 → bcrypt genera un salt aleatorio y hashea
-    // el resultado es irreversible: nunca se guarda la contraseña real
+    // Elemento criptográfico #1: hash bcrypt con salt de 12 rondas
     const hashedPassword = await bcrypt.hash(password, 12);
 
     const user = await prisma.user.create({
-      data: { name, email, password: hashedPassword },
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        role,
+        phone:        phone        || null,
+        country:      country      || null,
+        city:         city         || null,
+        businessName: businessName || null,
+        taxId:        taxId        || null,
+        bio:          bio          || null,
+      },
     });
 
-    // Elemento criptográfico #4: generar OTP con CSPRNG
-    // crypto.randomInt usa /dev/urandom (Linux) o CryptGenRandom (Windows)
-    // Es impredecible — a diferencia de Math.random() que NO es seguro
-    const otpCode = crypto.randomInt(100000, 999999).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutos
+    // Elemento criptográfico #4: OTP con CSPRNG
+    const otpCode   = crypto.randomInt(100000, 999999).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     await prisma.otpCode.create({
       data: { userId: user.id, code: otpCode, expiresAt },
     });
 
-    // En producción aquí enviarías el OTP por email (con Resend, Nodemailer, etc.)
-    // Por ahora lo devolvemos en la respuesta para pruebas
     console.log(`OTP para ${email}: ${otpCode}`);
 
     return NextResponse.json({
-      message: "Usuario creado. Revisa tu email para el código OTP.",
-      // Solo en desarrollo — en producción NO devolver el OTP
+      message: "Usuario creado correctamente.",
       ...(process.env.NODE_ENV === "development" && { otpCode }),
     });
   } catch (error) {
