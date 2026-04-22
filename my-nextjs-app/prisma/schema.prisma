@@ -4,41 +4,33 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
+// ─── USUARIO ───────────────────────────────────────────────────────
 model User {
   id            String    @id @default(cuid())
   name          String?
   email         String    @unique
   emailVerified DateTime?
-  password      String?
+  password      String?           // hash bcrypt — elemento criptográfico #1
   image         String?
-  role          Role      @default(CLIENT)
-
-  // Campos extra admin
-  phone         String?
-  country       String?
-  city          String?
-  businessName  String?
-  taxId         String?
-  bio           String?
-
+  role          Role      @default(USER)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts       Account[]
-  sessions       Session[]
-  otpCodes       OtpCode[]
-  reservations   Reservation[]
-  hotels         Hotel[]
-  passwordResets PasswordReset[]
+  accounts      Account[]
+  sessions      Session[]
+  otpCodes      OtpCode[]
+  reservations  Reservation[]
 }
 
 enum Role {
-  CLIENT
+  USER
   ADMIN
 }
 
+// ─── CUENTA SSO (Google, GitHub, etc.) ───────────────────────────
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -54,9 +46,11 @@ model Account {
   session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([provider, providerAccountId])
 }
 
+// ─── SESIÓN JWT ───────────────────────────────────────────────────
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique
@@ -65,6 +59,7 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+// ─── CÓDIGO OTP ───────────────────────────────────────────────────
 model OtpCode {
   id        String   @id @default(cuid())
   userId    String
@@ -76,33 +71,33 @@ model OtpCode {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model PasswordReset {
-  id        String   @id @default(cuid())
-  userId    String
-  token     String   @unique
-  expiresAt DateTime
-  used      Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
+// ─── HOTEL ────────────────────────────────────────────────────────
 model Hotel {
   id           String        @id @default(cuid())
   name         String
   description  String
   location     String
+  experienceType ExperienceType @default(RELAX)
   price        Float
   stars        Int           @default(5)
+  services     String[]       @default([])
+  exclusiveFeatures String[]  @default([])
   images       String[]
-  ownerId      String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-
-  owner        User?         @relation(fields: [ownerId], references: [id])
   reservations Reservation[]
 }
 
+enum ExperienceType {
+  RELAX
+  WELLNESS
+  GASTRONOMIC
+  ADVENTURE
+  ROMANTIC
+  CULTURAL
+}
+
+// ─── RESERVA ──────────────────────────────────────────────────────
 model Reservation {
   id         String            @id @default(cuid())
   userId     String
