@@ -1,6 +1,8 @@
 "use client";
 // app/auth/error/page.tsx
 
+export const dynamic = "force-dynamic";
+
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
