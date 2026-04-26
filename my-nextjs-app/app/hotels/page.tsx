@@ -35,18 +35,9 @@ const EXPERIENCE_LABELS: Record<ExperienceType, string> = {
 const SERVICES = ["Spa", "Rooftop", "Pool", "Chef Table", "Airport Transfer", "Pet Friendly", "Yoga", "Winery"];
 
 const COMPARISON_COLUMN_STYLES = [
-  {
-    header: "bg-[#284B63]/14 text-[#153243] border-[#153243]/20",
-    cell: "bg-[#EEF0EB]",
-  },
-  {
-    header: "bg-[#B4B8AB]/24 text-[#153243] border-[#153243]/16",
-    cell: "bg-[#F4F9E9]",
-  },
-  {
-    header: "bg-[#153243]/12 text-[#153243] border-[#153243]/22",
-    cell: "bg-[#EEF0EB]",
-  },
+  { header: "bg-[#284B63]/14 text-[#153243] border-[#153243]/20", cell: "bg-[#EEF0EB]" },
+  { header: "bg-[#B4B8AB]/24 text-[#153243] border-[#153243]/16", cell: "bg-[#F4F9E9]" },
+  { header: "bg-[#153243]/12 text-[#153243] border-[#153243]/22", cell: "bg-[#EEF0EB]" },
 ];
 
 export default function HotelsPage() {
@@ -167,7 +158,6 @@ export default function HotelsPage() {
   }
 
   useEffect(() => {
-    // Defer initial fetch to next tick to avoid calling state setters synchronously inside the effect body.
     const timeoutId = window.setTimeout(() => {
       void fetchHotels();
     }, 0);
@@ -175,7 +165,7 @@ export default function HotelsPage() {
     return () => {
       window.clearTimeout(timeoutId);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run only once on mount; subsequent filtering is user-driven
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -446,60 +436,75 @@ export default function HotelsPage() {
                 return (
                   <article
                     key={hotel.id}
-                    onClick={() => toggleHotelForCompare(hotel.id)}
                     className={`rounded-3xl border p-5 transition ${
                       selected
                         ? "border-[#153243]/40 bg-[#D9E0D4] shadow-[0_16px_34px_rgba(21,50,67,0.18)]"
                         : "border-[#153243]/16 bg-[#EEF0EB] hover:bg-[#DDE4D8] hover:border-[#153243]/34 hover:shadow-[0_10px_22px_rgba(21,50,67,0.14)]"
                     }`}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        toggleHotelForCompare(hotel.id);
-                      }
-                    }}
                   >
-                    <div className="mb-3 flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-display text-xl font-semibold text-[#153243] leading-tight line-clamp-2">{hotel.name}</h3>
-                        <p className="text-xs uppercase tracking-[0.14em] text-[#284B63]/80">{hotel.location}</p>
+                    <div
+                      onClick={() => toggleHotelForCompare(hotel.id)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          toggleHotelForCompare(hotel.id);
+                        }
+                      }}
+                      className="cursor-pointer"
+                    >
+                      <div className="mb-3 flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-display text-xl font-semibold text-[#153243] leading-tight line-clamp-2">{hotel.name}</h3>
+                          <p className="text-xs uppercase tracking-[0.14em] text-[#284B63]/80">{hotel.location}</p>
+                        </div>
+                        <span
+                          className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-semibold ${
+                            selected
+                              ? "border border-[#153243] bg-[#284B63] text-[#F4F9E9]"
+                              : "border border-[#153243]/20 bg-[#EEF0EB] text-[#284B63]"
+                          }`}
+                        >
+                          {selected ? "Selected" : "Click to compare"}
+                        </span>
                       </div>
-                      <span
-                        className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-semibold ${
-                          selected
-                            ? "border border-[#153243] bg-[#284B63] text-[#F4F9E9]"
-                            : "border border-[#153243]/20 bg-[#EEF0EB] text-[#284B63]"
-                        }`}
+
+                      <p className="line-clamp-3 text-sm text-[#284B63]/88 leading-7">{hotel.description}</p>
+
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <span className="rounded-full border border-[#153243] bg-[#284B63] px-2.5 py-1 text-xs font-semibold text-[#F4F9E9]">
+                          ${hotel.price.toFixed(0)} / night
+                        </span>
+                        <span className="rounded-full border border-[#153243]/18 bg-[#F4F9E9] px-2.5 py-1 text-xs font-semibold text-[#153243]">
+                          {EXPERIENCE_LABELS[hotel.experienceType]}
+                        </span>
+                        <span className="rounded-full border border-[#153243]/18 bg-[#F4F9E9] px-2.5 py-1 text-xs font-semibold text-[#153243]">
+                          {"★".repeat(hotel.stars)}
+                        </span>
+                      </div>
+
+                      <div className="mt-4">
+                        <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[#284B63]">Services</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {hotel.services.map((service) => (
+                            <span key={service} className="rounded-full border border-[#153243]/18 bg-[#EEF0EB] px-2 py-0.5 text-xs text-[#153243]">
+                              {service}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Botón Reservar — fuera del área clickeable de compare */}
+                    <div className="mt-4 pt-4 border-t border-[#153243]/15">
+                      <Link
+                        href={`/hotels/${hotel.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="block w-full text-center rounded-full border-2 border-[#153243] bg-[#284B63] hover:bg-[#153243] text-[#F4F9E9] text-xs font-bold py-2.5 transition-colors"
                       >
-                        {selected ? "Selected" : "Click to compare"}
-                      </span>
-                    </div>
-
-                    <p className="line-clamp-3 text-sm text-[#284B63]/88 leading-7">{hotel.description}</p>
-
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <span className="rounded-full border border-[#153243] bg-[#284B63] px-2.5 py-1 text-xs font-semibold text-[#F4F9E9]">
-                        ${hotel.price.toFixed(0)} / night
-                      </span>
-                      <span className="rounded-full border border-[#153243]/18 bg-[#F4F9E9] px-2.5 py-1 text-xs font-semibold text-[#153243]">
-                        {EXPERIENCE_LABELS[hotel.experienceType]}
-                      </span>
-                      <span className="rounded-full border border-[#153243]/18 bg-[#F4F9E9] px-2.5 py-1 text-xs font-semibold text-[#153243]">
-                        {"★".repeat(hotel.stars)}
-                      </span>
-                    </div>
-
-                    <div className="mt-4">
-                      <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[#284B63]">Services</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {hotel.services.map((service) => (
-                          <span key={service} className="rounded-full border border-[#153243]/18 bg-[#EEF0EB] px-2 py-0.5 text-xs text-[#153243]">
-                            {service}
-                          </span>
-                        ))}
-                      </div>
+                        Reservar ahora →
+                      </Link>
                     </div>
                   </article>
                 );

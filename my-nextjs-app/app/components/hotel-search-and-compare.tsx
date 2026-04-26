@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import Link from "next/link";
 
 type ExperienceType =
   | "RELAX"
@@ -319,6 +320,16 @@ export default function HotelSearchAndCompare() {
                           ))
                         )}
                       </div>
+                    </div>
+
+                    {/* Botón Reservar */}
+                    <div className="mt-4 pt-4 border-t border-stone-100">
+                      <Link
+                        href={`/hotels/${hotel.id}/reserve`}
+                        className="block w-full text-center rounded-xl bg-stone-900 hover:bg-amber-500 text-white text-xs font-bold py-2.5 transition-colors"
+                      >
+                        Reservar ahora →
+                      </Link>
                     </div>
                   </article>
                 );
