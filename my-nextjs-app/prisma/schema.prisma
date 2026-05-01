@@ -7,7 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── USUARIO ───────────────────────────────────────────────────────
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -23,6 +22,7 @@ model User {
   sessions      Session[]
   otpCodes      OtpCode[]
   reservations  Reservation[]
+  hotels        Hotel[]    // ← NUEVO: hoteles del anfitrión
 }
 
 enum Role {
@@ -30,7 +30,6 @@ enum Role {
   ADMIN
 }
 
-// ─── CUENTA SSO ───────────────────────────────────────────────────
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -49,7 +48,6 @@ model Account {
   @@unique([provider, providerAccountId])
 }
 
-// ─── SESIÓN JWT ───────────────────────────────────────────────────
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique
@@ -58,7 +56,6 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// ─── CÓDIGO OTP ───────────────────────────────────────────────────
 model OtpCode {
   id        String   @id @default(cuid())
   userId    String
@@ -70,7 +67,6 @@ model OtpCode {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// ─── HOTEL ────────────────────────────────────────────────────────
 model Hotel {
   id                String         @id @default(cuid())
   name              String
@@ -78,12 +74,16 @@ model Hotel {
   location          String
   experienceType    ExperienceType @default(RELAX)
   price             Float
+  extraBedPrice     Float          @default(50)
   stars             Int            @default(5)
   services          String[]       @default([])
   exclusiveFeatures String[]       @default([])
   images            String[]
+  ownerId           String?        // ← NUEVO: dueño del hotel
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
+
+  owner             User?          @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   reservations      Reservation[]
 }
 
@@ -96,7 +96,6 @@ enum ExperienceType {
   CULTURAL
 }
 
-// ─── RESERVA ──────────────────────────────────────────────────────
 model Reservation {
   id         String            @id @default(cuid())
   userId     String
@@ -107,7 +106,6 @@ model Reservation {
   totalPrice Float
   status     ReservationStatus @default(PENDING)
 
-  // Experiencias adicionales contratadas
   extras     ReservationExtra[]
 
   createdAt  DateTime          @default(now())
@@ -123,7 +121,6 @@ enum ReservationStatus {
   CANCELLED
 }
 
-// ─── EXPERIENCIAS ADICIONALES ─────────────────────────────────────
 model ReservationExtra {
   id            String        @id @default(cuid())
   reservationId String
@@ -136,8 +133,8 @@ model ReservationExtra {
 }
 
 enum ExtraType {
-  BREAKFAST     // Desayuno premium
-  SPA           // Sesión de spa
-  TOUR          // Tour guiado
-  TRANSPORT     // Transporte privado
+  BREAKFAST
+  SPA
+  TOUR
+  TRANSPORT
 }

@@ -21,6 +21,7 @@ type Hotel = {
   stars: number;
   services: string[];
   exclusiveFeatures: string[];
+  images: string[];
 };
 
 const EXPERIENCE_LABELS: Record<ExperienceType, string> = {
@@ -30,6 +31,15 @@ const EXPERIENCE_LABELS: Record<ExperienceType, string> = {
   ADVENTURE: "Adventure",
   ROMANTIC: "Romantic",
   CULTURAL: "Cultural",
+};
+
+const EXPERIENCE_FALLBACK_IMAGES: Record<ExperienceType, string> = {
+  RELAX:       "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=800&q=80",
+  WELLNESS:    "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800&q=80",
+  GASTRONOMIC: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80",
+  ADVENTURE:   "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80",
+  ROMANTIC:    "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80",
+  CULTURAL:    "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&q=80",
 };
 
 const SERVICES = ["Spa", "Rooftop", "Pool", "Chef Table", "Airport Transfer", "Pet Friendly", "Yoga", "Winery"];
@@ -67,6 +77,10 @@ export default function HotelsPage() {
     if (comparisonHotels.length === 0) return null;
     return Math.max(...comparisonHotels.map((hotel) => hotel.stars));
   }, [comparisonHotels]);
+
+  function getHotelImage(hotel: Hotel) {
+    return hotel.images?.[0] || EXPERIENCE_FALLBACK_IMAGES[hotel.experienceType] || EXPERIENCE_FALLBACK_IMAGES.RELAX;
+  }
 
   async function fetchHotels(options?: {
     location?: string;
@@ -173,7 +187,7 @@ export default function HotelsPage() {
       <div className="absolute inset-0 hero-grid opacity-30" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(180,184,171,0.34),_transparent_40%),radial-gradient(circle_at_top_right,_rgba(40,75,99,0.1),_transparent_35%),linear-gradient(180deg,_#eef0eb,_#f4f9e9)]" />
 
-      <div className="relative z-10 mx-auto w-full max-w-6xl px-4 py-10 md:px-8 md:py-14">
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-10 md:px-8 md:py-14">
         <header className="mb-10 flex flex-col gap-5 border-b border-[#153243]/15 pb-7 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#284B63]/75">Wave Boutique Hotels</p>
@@ -206,10 +220,11 @@ export default function HotelsPage() {
                     {comparisonHotels.map((hotel, index) => {
                       const style = COMPARISON_COLUMN_STYLES[index % COMPARISON_COLUMN_STYLES.length];
                       return (
-                      <th key={hotel.id} className={`border-b px-3 py-2 text-center text-xs font-bold uppercase tracking-[0.15em] ${style.header}`}>
-                        {hotel.name}
-                      </th>
-                    );})}
+                        <th key={hotel.id} className={`border-b px-3 py-2 text-center text-xs font-bold uppercase tracking-[0.15em] ${style.header}`}>
+                          {hotel.name}
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody>
@@ -218,8 +233,9 @@ export default function HotelsPage() {
                     {comparisonHotels.map((hotel, index) => {
                       const style = COMPARISON_COLUMN_STYLES[index % COMPARISON_COLUMN_STYLES.length];
                       return (
-                      <td key={hotel.id} className={`border-b border-[#153243]/14 px-3 py-3 font-medium text-[#153243] ${style.cell}`}>{hotel.location}</td>
-                    );})}
+                        <td key={hotel.id} className={`border-b border-[#153243]/14 px-3 py-3 font-medium text-[#153243] ${style.cell}`}>{hotel.location}</td>
+                      );
+                    })}
                   </tr>
                   <tr>
                     <td className="border-b border-[#153243]/14 bg-[#EEF0EB] px-3 py-3 text-xs font-bold uppercase tracking-[0.14em] text-[#284B63]">Price / Night</td>
@@ -227,16 +243,18 @@ export default function HotelsPage() {
                       const style = COMPARISON_COLUMN_STYLES[index % COMPARISON_COLUMN_STYLES.length];
                       const isHighest = hotel.price === maxComparisonPrice;
                       return (
-                      <td key={hotel.id} className={`border-b border-[#153243]/14 px-3 py-3 ${isHighest ? "font-bold text-[#153243]" : "font-medium text-[#153243]"} ${style.cell}`}>${hotel.price.toFixed(0)}</td>
-                    );})}
+                        <td key={hotel.id} className={`border-b border-[#153243]/14 px-3 py-3 ${isHighest ? "font-bold text-[#153243]" : "font-medium text-[#153243]"} ${style.cell}`}>${hotel.price.toFixed(0)}</td>
+                      );
+                    })}
                   </tr>
                   <tr>
                     <td className="border-b border-[#153243]/14 bg-[#EEF0EB] px-3 py-3 text-xs font-bold uppercase tracking-[0.14em] text-[#284B63]">Experience</td>
                     {comparisonHotels.map((hotel, index) => {
                       const style = COMPARISON_COLUMN_STYLES[index % COMPARISON_COLUMN_STYLES.length];
                       return (
-                      <td key={hotel.id} className={`border-b border-[#153243]/14 px-3 py-3 font-medium text-[#153243] ${style.cell}`}>{EXPERIENCE_LABELS[hotel.experienceType]}</td>
-                    );})}
+                        <td key={hotel.id} className={`border-b border-[#153243]/14 px-3 py-3 font-medium text-[#153243] ${style.cell}`}>{EXPERIENCE_LABELS[hotel.experienceType]}</td>
+                      );
+                    })}
                   </tr>
                   <tr>
                     <td className="border-b border-[#153243]/14 bg-[#EEF0EB] px-3 py-3 text-xs font-bold uppercase tracking-[0.14em] text-[#284B63]">Stars</td>
@@ -244,24 +262,27 @@ export default function HotelsPage() {
                       const style = COMPARISON_COLUMN_STYLES[index % COMPARISON_COLUMN_STYLES.length];
                       const isHighest = hotel.stars === maxComparisonStars;
                       return (
-                      <td key={hotel.id} className={`border-b border-[#153243]/14 px-3 py-3 ${isHighest ? "font-bold text-[#153243]" : "font-medium text-[#153243]"} ${style.cell}`}>{"★".repeat(hotel.stars)}</td>
-                    );})}
+                        <td key={hotel.id} className={`border-b border-[#153243]/14 px-3 py-3 ${isHighest ? "font-bold text-[#153243]" : "font-medium text-[#153243]"} ${style.cell}`}>{"★".repeat(hotel.stars)}</td>
+                      );
+                    })}
                   </tr>
                   <tr>
                     <td className="border-b border-[#153243]/14 bg-[#EEF0EB] px-3 py-3 text-xs font-bold uppercase tracking-[0.14em] text-[#284B63]">Services</td>
                     {comparisonHotels.map((hotel, index) => {
                       const style = COMPARISON_COLUMN_STYLES[index % COMPARISON_COLUMN_STYLES.length];
                       return (
-                      <td key={hotel.id} className={`border-b border-[#153243]/14 px-3 py-3 font-medium text-[#153243] ${style.cell}`}>{hotel.services.join(", ")}</td>
-                    );})}
+                        <td key={hotel.id} className={`border-b border-[#153243]/14 px-3 py-3 font-medium text-[#153243] ${style.cell}`}>{hotel.services.join(", ")}</td>
+                      );
+                    })}
                   </tr>
                   <tr>
                     <td className="bg-[#EEF0EB] px-3 py-3 text-xs font-bold uppercase tracking-[0.14em] text-[#284B63]">Exclusive Features</td>
                     {comparisonHotels.map((hotel, index) => {
                       const style = COMPARISON_COLUMN_STYLES[index % COMPARISON_COLUMN_STYLES.length];
                       return (
-                      <td key={hotel.id} className={`px-3 py-3 font-medium text-[#153243] ${style.cell}`}>{hotel.exclusiveFeatures.join(", ")}</td>
-                    );})}
+                        <td key={hotel.id} className={`px-3 py-3 font-medium text-[#153243] ${style.cell}`}>{hotel.exclusiveFeatures.join(", ")}</td>
+                      );
+                    })}
                   </tr>
                 </tbody>
               </table>
@@ -430,19 +451,44 @@ export default function HotelsPage() {
               No hotels found with the current filters.
             </div>
           ) : (
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
               {filteredHotels.map((hotel) => {
                 const selected = selectedIds.includes(hotel.id);
                 return (
                   <article
                     key={hotel.id}
-                    className={`rounded-3xl border p-5 transition ${
+                    className={`overflow-hidden rounded-3xl border transition ${
                       selected
                         ? "border-[#153243]/40 bg-[#D9E0D4] shadow-[0_16px_34px_rgba(21,50,67,0.18)]"
                         : "border-[#153243]/16 bg-[#EEF0EB] hover:bg-[#DDE4D8] hover:border-[#153243]/34 hover:shadow-[0_10px_22px_rgba(21,50,67,0.14)]"
                     }`}
                   >
                     <div
+                      onClick={() => toggleHotelForCompare(hotel.id)}
+                      className="aspect-[16/10] overflow-hidden bg-[#284B63]/10 cursor-pointer relative group"
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          toggleHotelForCompare(hotel.id);
+                        }
+                      }}
+                    >
+                      <img
+                        src={getHotelImage(hotel)}
+                        alt={hotel.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      {selected && (
+                        <div className="absolute top-3 right-3 bg-[#284B63] text-[#F4F9E9] text-xs font-bold px-3 py-1 rounded-full">
+                          ✓ Selected
+                        </div>
+                      )}
+                    </div>
+
+                    <div
+                      className="p-5 cursor-pointer"
                       onClick={() => toggleHotelForCompare(hotel.id)}
                       role="button"
                       tabIndex={0}
@@ -452,7 +498,6 @@ export default function HotelsPage() {
                           toggleHotelForCompare(hotel.id);
                         }
                       }}
-                      className="cursor-pointer"
                     >
                       <div className="mb-3 flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
@@ -496,14 +541,13 @@ export default function HotelsPage() {
                       </div>
                     </div>
 
-                    {/* Botón Reservar — fuera del área clickeable de compare */}
-                    <div className="mt-4 pt-4 border-t border-[#153243]/15">
+                    <div className="px-5 pb-5 pt-2 border-t border-[#153243]/15">
                       <Link
                         href={`/hotels/${hotel.id}`}
                         onClick={(e) => e.stopPropagation()}
                         className="block w-full text-center rounded-full border-2 border-[#153243] bg-[#284B63] hover:bg-[#153243] text-[#F4F9E9] text-xs font-bold py-2.5 transition-colors"
                       >
-                        Reservar ahora →
+                        Ver detalle →
                       </Link>
                     </div>
                   </article>
