@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import LocationAutocomplete from "./LocationAutocomplete";
 
 export default function HomeSearchForm() {
   const router = useRouter();
@@ -16,7 +17,6 @@ export default function HomeSearchForm() {
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
 
-    // Construir query params para enviar a /hotels
     const params = new URLSearchParams();
     if (location.trim()) params.set("location", location.trim());
     if (checkIn) params.set("checkIn", checkIn);
@@ -47,19 +47,8 @@ export default function HomeSearchForm() {
 
       <form onSubmit={handleSearch} className="space-y-3">
 
-        {/* Ubicación */}
-        <div className="rounded-2xl border-2 border-[#153243]/15 bg-white px-4 py-3 hover:border-[#153243]/30 focus-within:border-[#153243] transition-colors">
-          <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#284B63]">
-            Ubicación
-          </label>
-          <input
-            type="text"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            placeholder="Santiago, Pucón, Atacama..."
-            className="w-full bg-transparent text-sm text-[#153243] placeholder-[#284B63]/40 outline-none mt-1"
-          />
-        </div>
+        {/* Ubicación con autocompletado */}
+        <LocationAutocomplete value={location} onChange={setLocation} />
 
         {/* Fechas */}
         <div className="grid grid-cols-2 gap-3">
