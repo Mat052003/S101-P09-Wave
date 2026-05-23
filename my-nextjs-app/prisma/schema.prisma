@@ -22,7 +22,9 @@ model User {
   sessions      Session[]
   otpCodes      OtpCode[]
   reservations  Reservation[]
-  hotels        Hotel[]    // ← NUEVO: hoteles del anfitrión
+  hotels        Hotel[]
+  reviews       Review[]
+  reviewReports ReviewReport[]
 }
 
 enum Role {
@@ -79,12 +81,13 @@ model Hotel {
   services          String[]       @default([])
   exclusiveFeatures String[]       @default([])
   images            String[]
-  ownerId           String?        // ← NUEVO: dueño del hotel
+  ownerId           String?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
   owner             User?          @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   reservations      Reservation[]
+  reviews           Review[]
 }
 
 enum ExperienceType {
@@ -107,6 +110,7 @@ model Reservation {
   status     ReservationStatus @default(PENDING)
 
   extras     ReservationExtra[]
+  review     Review?
 
   createdAt  DateTime          @default(now())
   updatedAt  DateTime          @updatedAt
@@ -137,4 +141,42 @@ enum ExtraType {
   SPA
   TOUR
   TRANSPORT
+}
+
+// ─── RESEÑA ────────────────────────────────────────────────────────
+model Review {
+  id            String   @id @default(cuid())
+  hotelId       String
+  userId        String
+  reservationId String   @unique  // una sola reseña por reserva
+
+  rating        Int      // 1-5 estrellas (promedio)
+  cleanliness   Int      // 1-5
+  location      Int      // 1-5
+  service       Int      // 1-5
+  comment       String
+
+  ownerReply    String?  // respuesta del anfitrión
+  ownerReplyAt  DateTime?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  hotel       Hotel       @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+
+  reports     ReviewReport[]
+}
+
+// ─── REPORTE DE RESEÑA (admin reporta a moderador) ─────────────────
+model ReviewReport {
+  id        String   @id @default(cuid())
+  reviewId  String
+  userId    String   // quien reporta (admin/anfitrión)
+  reason    String
+  createdAt DateTime @default(now())
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

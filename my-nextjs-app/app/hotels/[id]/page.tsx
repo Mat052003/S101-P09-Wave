@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import HotelReviews from "@/app/components/HotelReviews";
 
 type ExperienceType = "RELAX" | "WELLNESS" | "GASTRONOMIC" | "ADVENTURE" | "ROMANTIC" | "CULTURAL";
 
@@ -27,7 +28,6 @@ const EXPERIENCE_LABELS: Record<ExperienceType, string> = {
   ADVENTURE: "Adventure", ROMANTIC: "Romantic", CULTURAL: "Cultural",
 };
 
-// 4 imágenes de Unsplash por tipo de experiencia
 const EXPERIENCE_IMAGES: Record<ExperienceType, string[]> = {
   RELAX: [
     "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=1200&q=85",
@@ -98,14 +98,12 @@ export default function HotelDetailPage() {
     );
   }
 
-  // Usa las imágenes del hotel si tiene, si no usa las de Unsplash por tipo
   const images = hotel.images?.length > 0
     ? hotel.images
     : EXPERIENCE_IMAGES[hotel.experienceType] || EXPERIENCE_IMAGES.RELAX;
 
   return (
     <div className="min-h-screen bg-[#EEF0EB] text-[#153243]">
-      {/* Navbar */}
       <nav className="bg-[#F4F9E9] border-b border-[#153243]/15 px-6 h-16 flex items-center justify-between sticky top-0 z-10">
         <Link href="/hotels" className="flex items-center gap-2 text-[#153243] font-semibold">
           ← Volver a hoteles
@@ -119,7 +117,6 @@ export default function HotelDetailPage() {
 
         {/* ── Galería ─────────────────────────────────────────────── */}
         <section className="mb-8">
-          {/* Imagen principal */}
           <div className="aspect-[16/9] rounded-3xl overflow-hidden bg-[#284B63]/10 mb-3">
             <img
               src={images[mainImage]}
@@ -128,7 +125,6 @@ export default function HotelDetailPage() {
             />
           </div>
 
-          {/* Miniaturas */}
           <div className="grid grid-cols-4 gap-3">
             {images.slice(0, 4).map((img, i) => (
               <button
@@ -144,13 +140,10 @@ export default function HotelDetailPage() {
           </div>
         </section>
 
-        {/* ── Header info + sidebar reserva ────────────────────────── */}
         <div className="grid lg:grid-cols-3 gap-8">
 
-          {/* Info principal */}
           <div className="lg:col-span-2 space-y-8">
 
-            {/* Header del hotel */}
             <header className="border-b border-[#153243]/15 pb-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -173,13 +166,11 @@ export default function HotelDetailPage() {
               </div>
             </header>
 
-            {/* Descripción */}
             <section>
               <h2 className="font-display text-2xl font-semibold mb-3">Sobre este hotel</h2>
               <p className="text-[#284B63] leading-relaxed">{hotel.description}</p>
             </section>
 
-            {/* Servicios */}
             <section>
               <h2 className="font-display text-2xl font-semibold mb-4">Servicios incluidos</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -192,7 +183,6 @@ export default function HotelDetailPage() {
               </div>
             </section>
 
-            {/* Características exclusivas */}
             {hotel.exclusiveFeatures?.length > 0 && (
               <section>
                 <h2 className="font-display text-2xl font-semibold mb-4">Características exclusivas</h2>
@@ -207,7 +197,6 @@ export default function HotelDetailPage() {
               </section>
             )}
 
-            {/* Galería extendida */}
             {images.length > 4 && (
               <section>
                 <h2 className="font-display text-2xl font-semibold mb-4">Más fotos</h2>
@@ -220,9 +209,11 @@ export default function HotelDetailPage() {
                 </div>
               </section>
             )}
+
+            {/* ── Reseñas ──────────────────────────────────────── */}
+            <HotelReviews hotelId={hotelId} />
           </div>
 
-          {/* ── Sidebar de reserva ───────────────────────────────────── */}
           <aside className="lg:sticky lg:top-24 self-start">
             <div className="bg-[#F4F9E9] border border-[#153243]/20 rounded-3xl p-6 shadow-lg">
               <div className="flex items-baseline justify-between mb-2">
@@ -251,7 +242,6 @@ export default function HotelDetailPage() {
               </div>
             </div>
 
-            {/* Tarjeta info */}
             <div className="mt-4 bg-[#EEF0EB] border border-[#153243]/15 rounded-2xl p-5">
               <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#284B63] mb-2">¿Necesitas ayuda?</p>
               <p className="text-sm text-[#153243] leading-relaxed">

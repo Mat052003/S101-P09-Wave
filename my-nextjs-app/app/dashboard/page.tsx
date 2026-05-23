@@ -1,4 +1,4 @@
-// src/app/dashboard/page.tsx
+// app/dashboard/page.tsx
 import { auth, signOut } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
@@ -33,9 +33,9 @@ export default async function DashboardPage({
   });
 
   const statusLabel: Record<string, { label: string; color: string }> = {
-    PENDING: { label: "Pendiente", color: "bg-[#B4B8AB]/28 text-[#153243] border border-[#153243]/20" },
-    CONFIRMED: { label: "Confirmada", color: "bg-[#F4F9E9] text-[#153243] border border-[#153243]/20" },
-    CANCELLED: { label: "Cancelada", color: "bg-[#EEF0EB] text-[#153243] border border-[#153243]/25" },
+    PENDING:   { label: "Pendiente",  color: "bg-[#B4B8AB]/28 text-[#153243] border border-[#153243]/20" },
+    CONFIRMED: { label: "Confirmada", color: "bg-[#F4F9E9] text-[#153243] border border-[#153243]/20"   },
+    CANCELLED: { label: "Cancelada",  color: "bg-[#EEF0EB] text-[#153243] border border-[#153243]/25"   },
   };
 
   async function handleSignOut() {
@@ -92,7 +92,6 @@ export default async function DashboardPage({
               <p className="text-xs text-[#284B63]/85 uppercase tracking-[0.16em] mt-1">Total gastado</p>
             </div>
           </div>
-
         </section>
 
         <section>
@@ -134,11 +133,18 @@ export default async function DashboardPage({
                         </p>
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
+                    <div className="text-right shrink-0 flex flex-col items-end gap-2">
                       <p className="font-bold text-[#153243]">${res.totalPrice}</p>
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${status.color}`}>
                         {status.label}
                       </span>
+                      {/* ── NUEVO: Link al detalle de la reserva ── */}
+                      <Link
+                        href={`/dashboard/reservations/${res.id}`}
+                        className="text-xs font-bold text-[#284B63] hover:text-[#153243] transition-colors underline underline-offset-2"
+                      >
+                        Ver detalle →
+                      </Link>
                     </div>
                   </div>
                 );

@@ -6,7 +6,6 @@ export const dynamic = "force-dynamic";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signOut } from "next-auth/react";
 
 type Hotel = {
   id: string;
@@ -52,33 +51,19 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-stone-50">
-      <nav className="bg-white border-b border-stone-100 px-8 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center">
-            <span className="text-white text-xs font-black">W</span>
-          </div>
-          <span className="text-lg font-bold text-slate-900">Wave<span className="text-teal-500">.</span></span>
-        </Link>
-        <div className="flex items-center gap-4">
-          <Link href="/admin/hotels/new"
-            className="bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold px-5 py-2 rounded-xl transition-colors">
-            + Agregar hotel
-          </Link>
-          <button
-            onClick={() => signOut({ callbackUrl: "/auth/login" })}
-            className="text-sm text-stone-500 hover:text-slate-900 font-medium transition-colors border border-stone-200 px-3 py-1.5 rounded-lg hover:border-stone-300"
-          >
-            Cerrar sesión
-          </button>
-        </div>
-      </nav>
-
+      {/* SIN navbar propio — el global ya lo incluye */}
       <div className="max-w-6xl mx-auto px-6 py-10 space-y-8">
 
-        <header>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-teal-600 mb-2">Panel de anfitrión</p>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight">Mis hoteles</h1>
-          <p className="text-stone-500 mt-2">Gestiona tus propiedades, precios y disponibilidad.</p>
+        <header className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-teal-600 mb-2">Panel de anfitrión</p>
+            <h1 className="text-4xl font-black text-slate-900 tracking-tight">Mis hoteles</h1>
+            <p className="text-stone-500 mt-2">Gestiona tus propiedades, precios y disponibilidad.</p>
+          </div>
+          <Link href="/admin/hotels/new"
+            className="bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold px-5 py-3 rounded-xl transition-colors">
+            + Agregar hotel
+          </Link>
         </header>
 
         {/* Stats */}
@@ -118,7 +103,6 @@ export default function AdminDashboard() {
           <div className="grid md:grid-cols-2 gap-6">
             {hotels.map((hotel) => (
               <article key={hotel.id} className="bg-white rounded-2xl border border-stone-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                {/* Imagen */}
                 <div className="aspect-[16/9] bg-stone-100 relative">
                   {hotel.images?.[0] ? (
                     <img src={hotel.images[0]} alt={hotel.name} className="w-full h-full object-cover" />
@@ -154,6 +138,10 @@ export default function AdminDashboard() {
                     <Link href={`/admin/hotels/${hotel.id}/edit`}
                       className="flex-1 text-center bg-slate-900 hover:bg-teal-600 text-white text-xs font-bold py-2.5 rounded-xl transition-colors">
                       Editar
+                    </Link>
+                    <Link href={`/admin/hotels/${hotel.id}/reservations`}
+                      className="flex-1 text-center bg-white border border-stone-200 hover:border-teal-400 text-slate-700 text-xs font-bold py-2.5 rounded-xl transition-colors">
+                      Ver reservas
                     </Link>
                     <Link href={`/hotels/${hotel.id}`}
                       className="flex-1 text-center bg-white border border-stone-200 hover:border-stone-400 text-slate-700 text-xs font-bold py-2.5 rounded-xl transition-colors">
