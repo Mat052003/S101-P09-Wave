@@ -26,6 +26,8 @@ type HotelData = {
   experienceType: string;
   price: number | string;
   extraBedPrice: number | string;
+  totalRooms: number;
+  isActive: boolean;
   stars: number;
   services: string[];
   exclusiveFeatures: string[];
@@ -48,6 +50,8 @@ export default function HotelForm({ initialData, hotelId, mode }: HotelFormProps
   const [experienceType, setExperienceType] = useState(initialData?.experienceType ?? "RELAX");
   const [price, setPrice]             = useState(initialData?.price?.toString() ?? "");
   const [extraBedPrice, setExtraBedPrice] = useState(initialData?.extraBedPrice?.toString() ?? "50");
+  const [totalRooms, setTotalRooms]   = useState(initialData?.totalRooms ?? 10);
+  const [isActive, setIsActive]       = useState(initialData?.isActive ?? true);
   const [stars, setStars]             = useState(initialData?.stars ?? 5);
   const [services, setServices]       = useState<string[]>(initialData?.services ?? []);
   const [features, setFeatures]       = useState<string[]>(initialData?.exclusiveFeatures ?? []);
@@ -61,7 +65,6 @@ export default function HotelForm({ initialData, hotelId, mode }: HotelFormProps
   const [uploading, setUploading]     = useState(false);
   const [error, setError]             = useState("");
 
-  // ── Servicios ────────────────────────────────────────────────
   function toggleService(service: string) {
     setServices((prev) =>
       prev.includes(service) ? prev.filter((s) => s !== service) : [...prev, service]
@@ -75,7 +78,6 @@ export default function HotelForm({ initialData, hotelId, mode }: HotelFormProps
     }
   }
 
-  // ── Características ──────────────────────────────────────────
   function addFeature() {
     if (newFeature.trim() && !features.includes(newFeature.trim())) {
       setFeatures([...features, newFeature.trim()]);
@@ -87,7 +89,6 @@ export default function HotelForm({ initialData, hotelId, mode }: HotelFormProps
     setFeatures(features.filter((x) => x !== f));
   }
 
-  // ── Imágenes ─────────────────────────────────────────────────
   function addImageUrl() {
     if (imageUrl.trim() && !images.includes(imageUrl.trim())) {
       setImages([...images, imageUrl.trim()]);
@@ -121,7 +122,6 @@ export default function HotelForm({ initialData, hotelId, mode }: HotelFormProps
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  // ── Submit ───────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true); setError("");
@@ -132,7 +132,7 @@ export default function HotelForm({ initialData, hotelId, mode }: HotelFormProps
       return;
     }
 
-    const url = mode === "create" ? "/api/admin/hotels" : `/api/admin/hotels/${hotelId}`;
+    const url    = mode === "create" ? "/api/admin/hotels" : `/api/admin/hotels/${hotelId}`;
     const method = mode === "create" ? "POST" : "PATCH";
 
     const res = await fetch(url, {
@@ -140,10 +140,14 @@ export default function HotelForm({ initialData, hotelId, mode }: HotelFormProps
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name, description, location, experienceType,
-        price: Number(price),
+        price:         Number(price),
         extraBedPrice: Number(extraBedPrice),
+        totalRooms:    Number(totalRooms),
+        isActive,
         stars,
-        services, exclusiveFeatures: features, images,
+        services,
+        exclusiveFeatures: features,
+        images,
       }),
     });
 
@@ -218,11 +222,11 @@ export default function HotelForm({ initialData, hotelId, mode }: HotelFormProps
         </div>
       </section>
 
-      {/* ── Precios ──────────────────────────────────────────────── */}
+      {/* ── Precios y disponibilidad ──────────────────────────── */}
       <section className="bg-white rounded-2xl border border-stone-100 p-6 space-y-5">
         <div>
-          <h2 className="text-lg font-black text-slate-900">Precios</h2>
-          <p className="text-xs text-stone-500 mt-0.5">Precio base por habitación + costo por cama extra</p>
+          <h2 className="text-lg font-black text-slate-900">Precios y disponibilidad</h2>
+          <p className="text-xs text-stone-500 mt-0.5">Precio base, camas extras y capacidad</p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
@@ -246,6 +250,34 @@ export default function HotelForm({ initialData, hotelId, mode }: HotelFormProps
             </div>
             <p className="text-xs text-stone-400 mt-1">Por cama adicional (3ra y 4ta persona)</p>
           </div>
+        </div>
+
+        {/* ── NUEVO: Total habitaciones ─────────────────────── */}
+        <div>
+          <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">
+            Total de habitaciones
+          </label>
+          <input type="number" value={totalRooms} onChange={(e) => setTotalRooms(Number(e.target.value))}
+            min="1" max="500" required
+            className="w-full bg-white border border-stone-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-teal-400 focus:ring-4 focus:ring-teal-100 transition-all" />
+          <p className="text-xs text-stone-400 mt-1">Capacidad máxima del hotel — controla la disponibilidad</p>
+        </div>
+
+        {/* ── NUEVO: Toggle isActive ────────────────────────── */}
+        <div className="flex items-center justify-between bg-stone-50 rounded-xl px-4 py-4 border border-stone-200">
+          <div>
+            <p className="text-sm font-bold text-slate-900">Hotel activo</p>
+            <p className="text-xs text-stone-400 mt-0.5">
+              {isActive ? "Los clientes pueden ver y reservar este hotel" : "El hotel está oculto y no acepta reservas"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsActive(!isActive)}
+            className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${isActive ? "bg-teal-500" : "bg-stone-300"}`}
+          >
+            <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-300 ${isActive ? "translate-x-6" : "translate-x-0.5"}`} />
+          </button>
         </div>
       </section>
 
@@ -335,7 +367,6 @@ export default function HotelForm({ initialData, hotelId, mode }: HotelFormProps
           <p className="text-xs text-stone-500 mt-0.5">Sube fotos o pega URLs (la primera será la principal)</p>
         </div>
 
-        {/* Subir archivo */}
         <div>
           <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">Subir desde tu computador</label>
           <div className="flex gap-2">
@@ -346,7 +377,6 @@ export default function HotelForm({ initialData, hotelId, mode }: HotelFormProps
           <p className="text-xs text-stone-400 mt-1">JPG, PNG o WEBP — máx 5MB</p>
         </div>
 
-        {/* O por URL */}
         <div>
           <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">O pega una URL</label>
           <div className="flex gap-2">
@@ -361,7 +391,6 @@ export default function HotelForm({ initialData, hotelId, mode }: HotelFormProps
           </div>
         </div>
 
-        {/* Galería */}
         {images.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-3 border-t border-stone-100">
             {images.map((img, i) => (
