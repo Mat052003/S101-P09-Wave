@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import HotelReviews from "@/app/components/HotelReviews";
+import GoogleMapComponent from "@/app/components/GoogleMap";
 
 type ExperienceType = "RELAX" | "WELLNESS" | "GASTRONOMIC" | "ADVENTURE" | "ROMANTIC" | "CULTURAL";
 
@@ -21,6 +22,8 @@ type Hotel = {
   services: string[];
   exclusiveFeatures: string[];
   images: string[];
+  latitude?: number;
+  longitude?: number;
 };
 
 const EXPERIENCE_LABELS: Record<ExperienceType, string> = {
@@ -68,10 +71,10 @@ const EXPERIENCE_IMAGES: Record<ExperienceType, string[]> = {
 };
 
 export default function HotelDetailPage() {
-  const params  = useParams();
+  const params = useParams();
   const hotelId = params.id as string;
 
-  const [hotel, setHotel]     = useState<Hotel | null>(null);
+  const [hotel, setHotel] = useState<Hotel | null>(null);
   const [loading, setLoading] = useState(true);
   const [mainImage, setMainImage] = useState(0);
 
@@ -130,9 +133,8 @@ export default function HotelDetailPage() {
               <button
                 key={i}
                 onClick={() => setMainImage(i)}
-                className={`aspect-[4/3] rounded-2xl overflow-hidden border-2 transition-all ${
-                  mainImage === i ? "border-[#153243] shadow-lg" : "border-transparent opacity-70 hover:opacity-100"
-                }`}
+                className={`aspect-[4/3] rounded-2xl overflow-hidden border-2 transition-all ${mainImage === i ? "border-[#153243] shadow-lg" : "border-transparent opacity-70 hover:opacity-100"
+                  }`}
               >
                 <img src={img} alt={`${hotel.name} ${i + 1}`} className="w-full h-full object-cover" />
               </button>
@@ -212,6 +214,22 @@ export default function HotelDetailPage() {
 
             {/* ── Reseñas ──────────────────────────────────────── */}
             <HotelReviews hotelId={hotelId} />
+            {/* ── Ubicación ──────────────────────────────────────── */}
+            {hotel.latitude && hotel.longitude && (
+              <section>
+                <h2 className="font-display text-2xl font-semibold mb-4">Ubicación</h2>
+                <GoogleMapComponent
+                  hotels={[{
+                    id: hotel.id,
+                    name: hotel.name,
+                    latitude: hotel.latitude,
+                    longitude: hotel.longitude,
+                    address: hotel.location,
+                  }]}
+                  singleHotel={true}
+                />
+              </section>
+            )}
           </div>
 
           <aside className="lg:sticky lg:top-24 self-start">

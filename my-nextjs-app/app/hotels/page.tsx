@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import GoogleMapComponent from "@/app/components/GoogleMap";
 
 type ExperienceType =
   | "RELAX"
@@ -22,6 +23,8 @@ type Hotel = {
   services: string[];
   exclusiveFeatures: string[];
   images: string[];
+  latitude?: number;
+  longitude?: number;
 };
 
 const EXPERIENCE_LABELS: Record<ExperienceType, string> = {
@@ -556,6 +559,21 @@ export default function HotelsPage() {
             </div>
           )}
         </section>
+
+        {/* ── Mapa general ──────────────────────────────────────── */}
+        {filteredHotels.filter(h => h.latitude && h.longitude).length > 0 && (
+          <section className="mt-10">
+            <h2 className="font-display text-2xl md:text-3xl font-semibold text-[#153243] mb-4">
+              Ubicaciones en el mapa
+            </h2>
+            <div className="rounded-3xl overflow-hidden border border-[#153243]/16">
+              <GoogleMapComponent
+                hotels={filteredHotels.filter(h => h.latitude && h.longitude) as any}
+              />
+            </div>
+          </section>
+        )}
+
       </div>
     </div>
   );
