@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import AvailabilityBadge from "@/app/components/AvailabilityBadge";
 
 const EXTRAS = [
   { type: "BREAKFAST", icon: "🥐", label: "Desayuno premium",  desc: "Buffet completo con productos locales", price: 25 },
@@ -30,13 +31,16 @@ export default function ReservePage() {
   const params = useParams();
   const hotelId = params.id as string;
 
-  const [hotel, setHotel]       = useState<Hotel | null>(null);
-  const [loading, setLoading]   = useState(true);
+  const [hotel, setHotel]           = useState<Hotel | null>(null);
+  const [loading, setLoading]       = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError]       = useState("");
-  const [step, setStep]         = useState<"form" | "extras" | "review" | "done">("form");
+  const [error, setError]           = useState("");
+  const [step, setStep]             = useState<"form" | "extras" | "review" | "done">("form");
 
-  // Form
+  // ── NUEVO: disponibilidad ──────────────────────────────────
+  const [availableRooms, setAvailableRooms] = useState(99);
+  const [isAvailable, setIsAvailable]       = useState(true);
+
   const today    = new Date().toISOString().split("T")[0];
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
 
@@ -45,7 +49,6 @@ export default function ReservePage() {
   const [guests, setGuests]     = useState(2);
   const [selectedExtras, setSelectedExtras] = useState<Record<string, number>>({});
 
-  // Cargar hotel
   useEffect(() => {
     fetch(`/api/hotels/${hotelId}`)
       .then((r) => r.json())
@@ -53,7 +56,6 @@ export default function ReservePage() {
       .catch(() => { setError("Error cargando hotel"); setLoading(false); });
   }, [hotelId]);
 
-  // Cálculos
   const nights = Math.max(1, Math.ceil(
     (new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)
   ));
@@ -85,20 +87,20 @@ export default function ReservePage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        hotelId,
-        checkIn,
-        checkOut,
-        guests,
+        hotelId, checkIn, checkOut, guests, rooms: 1,
         extras: extrasArray.map((e) => ({
-          type:     e.type,
-          price:    e.price,
-          quantity: e.quantity,
+          type: e.type, price: e.price, quantity: e.quantity,
         })),
       }),
     });
 
+    const data = await res.json();
     setSubmitting(false);
-    if (!res.ok) { setError("Error al crear la reserva"); return; }
+
+    if (!res.ok) {
+      setError(data.error || "Error al crear la reserva");
+      return;
+    }
     setStep("done");
     setTimeout(() => router.push("/dashboard"), 3000);
   }
@@ -119,7 +121,6 @@ export default function ReservePage() {
     );
   }
 
-  // ── Pantalla de éxito ─────────────────────────────────────────
   if (step === "done") {
     return (
       <div className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
@@ -139,7 +140,6 @@ export default function ReservePage() {
 
   return (
     <div className="min-h-screen bg-stone-50">
-      {/* Navbar */}
       <nav className="bg-white border-b border-stone-100 px-8 h-16 flex items-center justify-between sticky top-0 z-10">
         <Link href="/hotels" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center">
@@ -152,23 +152,18 @@ export default function ReservePage() {
         </Link>
       </nav>
 
-      {/* Stepper */}
       <div className="bg-white border-b border-stone-100 py-6">
         <div className="max-w-5xl mx-auto px-8 flex items-center justify-center gap-4">
           {[
-            { key: "form",    num: 1, label: "Fechas y huéspedes" },
-            { key: "extras",  num: 2, label: "Experiencias" },
-            { key: "review",  num: 3, label: "Confirmar" },
+            { key: "form",   num: 1, label: "Fechas y huéspedes" },
+            { key: "extras", num: 2, label: "Experiencias" },
+            { key: "review", num: 3, label: "Confirmar" },
           ].map((s, i, arr) => (
             <div key={s.key} className="flex items-center gap-3">
-              <div className={`flex items-center gap-2 ${
-                step === s.key ? "" : "opacity-40"
-              }`}>
+              <div className={`flex items-center gap-2 ${step === s.key ? "" : "opacity-40"}`}>
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
                   step === s.key ? "bg-teal-500 text-white" : "bg-slate-200 text-slate-500"
-                }`}>
-                  {s.num}
-                </div>
+                }`}>{s.num}</div>
                 <span className="text-sm font-semibold text-slate-700 hidden md:block">{s.label}</span>
               </div>
               {i < arr.length - 1 && <div className="w-8 h-px bg-slate-200" />}
@@ -178,11 +173,9 @@ export default function ReservePage() {
       </div>
 
       <div className="max-w-5xl mx-auto px-8 py-10 grid lg:grid-cols-3 gap-8">
-
-        {/* ── Contenido principal ────────────────────────────────── */}
         <div className="lg:col-span-2 space-y-6">
 
-          {/* PASO 1: Fechas y huéspedes */}
+          {/* PASO 1 */}
           {step === "form" && (
             <div className="bg-white rounded-2xl border border-stone-100 p-8 shadow-sm space-y-6">
               <div>
@@ -205,6 +198,18 @@ export default function ReservePage() {
                 </div>
               </div>
 
+              {/* ── NUEVO: Badge de disponibilidad ──────────────── */}
+              <AvailabilityBadge
+                hotelId={hotelId}
+                checkIn={checkIn}
+                checkOut={checkOut}
+                rooms={1}
+                onAvailabilityChange={(available, rooms) => {
+                  setIsAvailable(available);
+                  setAvailableRooms(rooms);
+                }}
+              />
+
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">Huéspedes</label>
                 <div className="flex items-center gap-4 bg-slate-50 rounded-xl px-4 py-3">
@@ -221,15 +226,17 @@ export default function ReservePage() {
                 <p className="text-sm text-slate-500">
                   {nights} {nights === 1 ? "noche" : "noches"} · ${(hotel.price * nights).toLocaleString()}
                 </p>
+                {/* ── NUEVO: disabled si no hay disponibilidad ──── */}
                 <button onClick={() => setStep("extras")}
-                  className="bg-slate-900 hover:bg-teal-600 text-white text-sm font-bold px-6 py-3 rounded-xl transition-colors">
+                  disabled={!isAvailable || availableRooms === 0}
+                  className="bg-slate-900 hover:bg-teal-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-sm font-bold px-6 py-3 rounded-xl transition-colors">
                   Continuar →
                 </button>
               </div>
             </div>
           )}
 
-          {/* PASO 2: Experiencias */}
+          {/* PASO 2 */}
           {step === "extras" && (
             <div className="bg-white rounded-2xl border border-stone-100 p-8 shadow-sm space-y-6">
               <div>
@@ -240,7 +247,7 @@ export default function ReservePage() {
 
               <div className="space-y-3">
                 {EXTRAS.map((e) => {
-                  const qty = selectedExtras[e.type] ?? 0;
+                  const qty    = selectedExtras[e.type] ?? 0;
                   const active = qty > 0;
                   return (
                     <div key={e.type}
@@ -259,7 +266,6 @@ export default function ReservePage() {
                             </div>
                             <p className="font-black text-slate-900 shrink-0">${e.price}</p>
                           </div>
-
                           {!active ? (
                             <button onClick={() => toggleExtra(e.type)}
                               className="mt-3 text-xs font-bold text-teal-600 hover:text-teal-700 transition-colors">
@@ -298,7 +304,7 @@ export default function ReservePage() {
             </div>
           )}
 
-          {/* PASO 3: Confirmar */}
+          {/* PASO 3 */}
           {step === "review" && (
             <div className="bg-white rounded-2xl border border-stone-100 p-8 shadow-sm space-y-6">
               <div>
@@ -352,7 +358,7 @@ export default function ReservePage() {
           )}
         </div>
 
-        {/* ── Resumen lateral ────────────────────────────────────── */}
+        {/* Resumen lateral */}
         <div className="lg:sticky lg:top-24 self-start">
           <div className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
             <div className="aspect-video bg-slate-100">
@@ -373,7 +379,6 @@ export default function ReservePage() {
                   <span className="text-slate-500">${hotel.price.toLocaleString()} × {nights} {nights === 1 ? "noche" : "noches"}</span>
                   <span className="font-semibold text-slate-900">${baseTotal.toLocaleString()}</span>
                 </div>
-
                 {extrasArray.map((e) => (
                   <div key={e.type} className="flex justify-between text-sm">
                     <span className="text-slate-500">{e.icon} {e.label} ×{e.quantity}</span>

@@ -82,15 +82,20 @@ model Hotel {
   exclusiveFeatures String[]       @default([])
   images            String[]
   ownerId           String?
+  // ── Disponibilidad ─────────────────────────────────────
+  totalRooms        Int            @default(10)  // total habitaciones del hotel
+  isActive          Boolean        @default(true) // el anfitrión puede desactivar
+  // ── Ubicación para Google Maps ──────────────────────────
+  latitude          Float?
+  longitude         Float?
+  address           String?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
-  latitude   Float?
-  longitude  Float?
-  address    String?
 
   owner             User?          @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   reservations      Reservation[]
   reviews           Review[]
+  blockedDates      BlockedDate[]  // fechas bloqueadas manualmente por el anfitrión
 }
 
 enum ExperienceType {
@@ -109,6 +114,7 @@ model Reservation {
   checkIn    DateTime
   checkOut   DateTime
   guests     Int               @default(1)
+  rooms      Int               @default(1) // habitaciones reservadas
   totalPrice Float
   status     ReservationStatus @default(PENDING)
 
@@ -129,11 +135,11 @@ enum ReservationStatus {
 }
 
 model ReservationExtra {
-  id            String        @id @default(cuid())
+  id            String    @id @default(cuid())
   reservationId String
   type          ExtraType
   price         Float
-  quantity      Int           @default(1)
+  quantity      Int       @default(1)
   notes         String?
 
   reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
@@ -146,20 +152,33 @@ enum ExtraType {
   TRANSPORT
 }
 
-// ─── RESEÑA ────────────────────────────────────────────────────────
+// ── Fechas bloqueadas manualmente por el anfitrión ──────────
+model BlockedDate {
+  id        String   @id @default(cuid())
+  hotelId   String
+  date      DateTime // día bloqueado
+  reason    String?
+  createdAt DateTime @default(now())
+
+  hotel Hotel @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+
+  @@unique([hotelId, date])
+}
+
+// ── Reseñas ──────────────────────────────────────────────────
 model Review {
   id            String   @id @default(cuid())
   hotelId       String
   userId        String
-  reservationId String   @unique  // una sola reseña por reserva
+  reservationId String   @unique
 
-  rating        Int      // 1-5 estrellas (promedio)
-  cleanliness   Int      // 1-5
-  location      Int      // 1-5
-  service       Int      // 1-5
+  rating        Int
+  cleanliness   Int
+  location      Int
+  service       Int
   comment       String
 
-  ownerReply    String?  // respuesta del anfitrión
+  ownerReply    String?
   ownerReplyAt  DateTime?
 
   createdAt     DateTime @default(now())
@@ -172,11 +191,10 @@ model Review {
   reports     ReviewReport[]
 }
 
-// ─── REPORTE DE RESEÑA (admin reporta a moderador) ─────────────────
 model ReviewReport {
   id        String   @id @default(cuid())
   reviewId  String
-  userId    String   // quien reporta (admin/anfitrión)
+  userId    String
   reason    String
   createdAt DateTime @default(now())
 
