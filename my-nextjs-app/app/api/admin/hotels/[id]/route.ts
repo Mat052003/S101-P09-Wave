@@ -1,72 +1,86 @@
-// app/api/admin/hotels/route.ts
+// app/api/admin/hotels/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
-// ── GET: listar hoteles del anfitrión ───────────────────────────
-export async function GET() {
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  if (!session?.user?.id) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+
+  const { id } = await params;
+  const hotel = await prisma.hotel.findUnique({ where: { id } });
+
+  if (!hotel) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
+  // Permitir si es dueño O si el hotel no tiene dueño (hoteles del seed)
+  if (hotel.ownerId && hotel.ownerId !== session.user.id) {
+    return NextResponse.json({ error: "No tienes permiso" }, { status: 403 });
   }
 
-  const user = await prisma.user.findUnique({ where: { id: session.user.id } });
-  if (user?.role !== "ADMIN") {
-    return NextResponse.json({ error: "Solo anfitriones" }, { status: 403 });
-  }
-
-  const hotels = await prisma.hotel.findMany({
-    where: { ownerId: session.user.id },
-    include: { _count: { select: { reservations: true } } },
-    orderBy: { createdAt: "desc" },
-  });
-
-  return NextResponse.json(hotels);
+  return NextResponse.json(hotel);
 }
 
-// ── POST: crear hotel ────────────────────────────────────────────
-export async function POST(req: NextRequest) {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-  }
+  if (!session?.user?.id) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
-  const user = await prisma.user.findUnique({ where: { id: session.user.id } });
-  if (user?.role !== "ADMIN") {
-    return NextResponse.json({ error: "Solo anfitriones pueden crear hoteles" }, { status: 403 });
+  const { id } = await params;
+  const hotel = await prisma.hotel.findUnique({ where: { id } });
+
+  if (!hotel) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
+  if (hotel.ownerId && hotel.ownerId !== session.user.id) {
+    return NextResponse.json({ error: "No tienes permiso" }, { status: 403 });
   }
 
   try {
     const body = await req.json();
-    const {
-      name, description, location, experienceType,
-      price, extraBedPrice, stars,
-      services, exclusiveFeatures, images,
-    } = body;
-
-    if (!name || !description || !location || !price) {
-      return NextResponse.json({ error: "Faltan campos obligatorios" }, { status: 400 });
-    }
-
-    const hotel = await prisma.hotel.create({
+    const updated = await prisma.hotel.update({
+      where: { id },
       data: {
-        name,
-        description,
-        location,
-        experienceType: experienceType || "RELAX",
-        price: Number(price),
-        extraBedPrice: Number(extraBedPrice) || 50,
-        stars: Number(stars) || 5,
-        services: services || [],
-        exclusiveFeatures: exclusiveFeatures || [],
-        images: images || [],
-        ownerId: session.user.id,
+        name:              body.name,
+        description:       body.description,
+        location:          body.location,
+        experienceType:    body.experienceType,
+        price:             body.price !== undefined ? Number(body.price) : undefined,
+        extraBedPrice:     body.extraBedPrice !== undefined ? Number(body.extraBedPrice) : undefined,
+        totalRooms:        body.totalRooms !== undefined ? Number(body.totalRooms) : undefined,
+        isActive:          body.isActive !== undefined ? body.isActive : undefined,
+        stars:             body.stars !== undefined ? Number(body.stars) : undefined,
+        services:          body.services,
+        exclusiveFeatures: body.exclusiveFeatures,
+        images:            body.images,
       },
     });
-
-    return NextResponse.json(hotel);
+    return NextResponse.json(updated);
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: "Error al crear el hotel" }, { status: 500 });
+    return NextResponse.json({ error: "Error al actualizar" }, { status: 500 });
   }
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+
+  const { id } = await params;
+  const hotel = await prisma.hotel.findUnique({ where: { id } });
+
+  if (!hotel) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
+  if (hotel.ownerId && hotel.ownerId !== session.user.id) {
+    return NextResponse.json({ error: "No tienes permiso" }, { status: 403 });
+  }
+
+  await prisma.hotel.delete({ where: { id } });
+  return NextResponse.json({ message: "Hotel eliminado" });
 }
