@@ -20,6 +20,7 @@ type Hotel = {
   name: string;
   location: string;
   price: number;
+  extraBedPrice: number;
   stars: number;
   description: string;
   images: string[];
@@ -27,8 +28,8 @@ type Hotel = {
 };
 
 export default function ReservePage() {
-  const router = useRouter();
-  const params = useParams();
+  const router  = useRouter();
+  const params  = useParams();
   const hotelId = params.id as string;
 
   const [hotel, setHotel]           = useState<Hotel | null>(null);
@@ -37,7 +38,6 @@ export default function ReservePage() {
   const [error, setError]           = useState("");
   const [step, setStep]             = useState<"form" | "extras" | "review" | "done">("form");
 
-  // ── NUEVO: disponibilidad ──────────────────────────────────
   const [availableRooms, setAvailableRooms] = useState(99);
   const [isAvailable, setIsAvailable]       = useState(true);
 
@@ -46,7 +46,10 @@ export default function ReservePage() {
 
   const [checkIn, setCheckIn]   = useState(today);
   const [checkOut, setCheckOut] = useState(tomorrow);
-  const [guests, setGuests]     = useState(2);
+  const [adults, setAdults]     = useState(2);   // ← NUEVO: adultos
+  const [children, setChildren] = useState(0);   // ← NUEVO: niños
+  const guests = adults + children;              // ← total calculado
+
   const [selectedExtras, setSelectedExtras] = useState<Record<string, number>>({});
 
   useEffect(() => {
@@ -56,10 +59,15 @@ export default function ReservePage() {
       .catch(() => { setError("Error cargando hotel"); setLoading(false); });
   }, [hotelId]);
 
+  // ── Cálculos de precio ────────────────────────────────────
   const nights = Math.max(1, Math.ceil(
     (new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)
   ));
-  const baseTotal   = (hotel?.price ?? 0) * nights;
+  const extraBeds    = Math.max(0, guests - 2);
+  const extraBedPrice = hotel?.extraBedPrice ?? 50;
+  const pricePerNight = (hotel?.price ?? 0) + (extraBeds * extraBedPrice);
+  const baseTotal     = pricePerNight * nights;
+
   const extrasArray = EXTRAS
     .filter((e) => (selectedExtras[e.type] ?? 0) > 0)
     .map((e) => ({ ...e, quantity: selectedExtras[e.type] }));
@@ -96,11 +104,7 @@ export default function ReservePage() {
 
     const data = await res.json();
     setSubmitting(false);
-
-    if (!res.ok) {
-      setError(data.error || "Error al crear la reserva");
-      return;
-    }
+    if (!res.ok) { setError(data.error || "Error al crear la reserva"); return; }
     setStep("done");
     setTimeout(() => router.push("/dashboard"), 3000);
   }
@@ -139,25 +143,16 @@ export default function ReservePage() {
   }
 
   return (
+    // ── FIX doble navbar: eliminar <nav> propio ──────────────
     <div className="min-h-screen bg-stone-50">
-      <nav className="bg-white border-b border-stone-100 px-8 h-16 flex items-center justify-between sticky top-0 z-10">
-        <Link href="/hotels" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center">
-            <span className="text-white text-xs font-black">W</span>
-          </div>
-          <span className="text-lg font-bold text-slate-900">Wave<span className="text-teal-500">.</span></span>
-        </Link>
-        <Link href={`/hotels`} className="text-sm text-slate-500 hover:text-slate-900 transition-colors">
-          ← Volver a hoteles
-        </Link>
-      </nav>
 
+      {/* Stepper */}
       <div className="bg-white border-b border-stone-100 py-6">
         <div className="max-w-5xl mx-auto px-8 flex items-center justify-center gap-4">
           {[
             { key: "form",   num: 1, label: "Fechas y huéspedes" },
-            { key: "extras", num: 2, label: "Experiencias" },
-            { key: "review", num: 3, label: "Confirmar" },
+            { key: "extras", num: 2, label: "Experiencias"       },
+            { key: "review", num: 3, label: "Confirmar"          },
           ].map((s, i, arr) => (
             <div key={s.key} className="flex items-center gap-3">
               <div className={`flex items-center gap-2 ${step === s.key ? "" : "opacity-40"}`}>
@@ -183,6 +178,7 @@ export default function ReservePage() {
                 <h2 className="text-2xl font-black text-slate-900">Selecciona fechas y huéspedes</h2>
               </div>
 
+              {/* Fechas */}
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">Check-in</label>
@@ -198,7 +194,7 @@ export default function ReservePage() {
                 </div>
               </div>
 
-              {/* ── NUEVO: Badge de disponibilidad ──────────────── */}
+              {/* Disponibilidad */}
               <AvailabilityBadge
                 hotelId={hotelId}
                 checkIn={checkIn}
@@ -210,23 +206,41 @@ export default function ReservePage() {
                 }}
               />
 
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">Huéspedes</label>
-                <div className="flex items-center gap-4 bg-slate-50 rounded-xl px-4 py-3">
-                  <button type="button" onClick={() => setGuests(Math.max(1, guests - 1))}
-                    className="w-9 h-9 rounded-full bg-white border border-slate-200 hover:border-teal-400 text-slate-700 font-bold transition-colors">−</button>
-                  <span className="text-2xl font-black text-slate-900 min-w-[40px] text-center">{guests}</span>
-                  <button type="button" onClick={() => setGuests(Math.min(10, guests + 1))}
-                    className="w-9 h-9 rounded-full bg-white border border-slate-200 hover:border-teal-400 text-slate-700 font-bold transition-colors">+</button>
-                  <span className="text-sm text-slate-500 ml-2">{guests === 1 ? "persona" : "personas"}</span>
+              {/* ── NUEVO: Adultos y niños por separado ───────── */}
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">Adultos</label>
+                  <div className="flex items-center gap-3 bg-slate-50 rounded-xl px-4 py-3">
+                    <button type="button" onClick={() => setAdults(Math.max(1, adults - 1))}
+                      className="w-9 h-9 rounded-full bg-white border border-slate-200 hover:border-teal-400 text-slate-700 font-bold transition-colors">−</button>
+                    <span className="text-2xl font-black text-slate-900 min-w-[32px] text-center">{adults}</span>
+                    <button type="button" onClick={() => setAdults(Math.min(4, adults + 1))}
+                      className="w-9 h-9 rounded-full bg-white border border-slate-200 hover:border-teal-400 text-slate-700 font-bold transition-colors">+</button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">Niños</label>
+                  <div className="flex items-center gap-3 bg-slate-50 rounded-xl px-4 py-3">
+                    <button type="button" onClick={() => setChildren(Math.max(0, children - 1))}
+                      className="w-9 h-9 rounded-full bg-white border border-slate-200 hover:border-teal-400 text-slate-700 font-bold transition-colors">−</button>
+                    <span className="text-2xl font-black text-slate-900 min-w-[32px] text-center">{children}</span>
+                    <button type="button" onClick={() => setChildren(Math.min(4, children + 1))}
+                      className="w-9 h-9 rounded-full bg-white border border-slate-200 hover:border-teal-400 text-slate-700 font-bold transition-colors">+</button>
+                  </div>
                 </div>
               </div>
 
+              {/* Info camas extra */}
+              {guests > 2 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-700">
+                  🛏️ {extraBeds} cama{extraBeds > 1 ? "s" : ""} extra (+${extraBeds * extraBedPrice}/noche)
+                </div>
+              )}
+
               <div className="flex justify-between items-center pt-2 border-t border-slate-100">
                 <p className="text-sm text-slate-500">
-                  {nights} {nights === 1 ? "noche" : "noches"} · ${(hotel.price * nights).toLocaleString()}
+                  {nights} {nights === 1 ? "noche" : "noches"} · ${baseTotal.toLocaleString()}
                 </p>
-                {/* ── NUEVO: disabled si no hay disponibilidad ──── */}
                 <button onClick={() => setStep("extras")}
                   disabled={!isAvailable || availableRooms === 0}
                   className="bg-slate-900 hover:bg-teal-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-sm font-bold px-6 py-3 rounded-xl transition-colors">
@@ -293,9 +307,7 @@ export default function ReservePage() {
 
               <div className="flex justify-between items-center pt-2 border-t border-slate-100">
                 <button onClick={() => setStep("form")}
-                  className="text-sm text-slate-500 hover:text-slate-900 transition-colors">
-                  ← Volver
-                </button>
+                  className="text-sm text-slate-500 hover:text-slate-900 transition-colors">← Volver</button>
                 <button onClick={() => setStep("review")}
                   className="bg-slate-900 hover:bg-teal-600 text-white text-sm font-bold px-6 py-3 rounded-xl transition-colors">
                   Revisar reserva →
@@ -322,15 +334,22 @@ export default function ReservePage() {
                 </div>
                 <div className="flex justify-between items-center py-3 border-b border-slate-100">
                   <span className="text-sm text-slate-500">Check-in</span>
-                  <span className="font-semibold text-slate-900">{new Date(checkIn).toLocaleDateString("es-CL", { weekday: "short", day: "numeric", month: "long" })}</span>
+                  {/* ── FIX fechas: usar new Date(checkIn + "T12:00:00") para evitar desfase timezone */}
+                  <span className="font-semibold text-slate-900">
+                    {new Date(checkIn + "T12:00:00").toLocaleDateString("es-CL", { weekday: "short", day: "numeric", month: "long" })}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center py-3 border-b border-slate-100">
                   <span className="text-sm text-slate-500">Check-out</span>
-                  <span className="font-semibold text-slate-900">{new Date(checkOut).toLocaleDateString("es-CL", { weekday: "short", day: "numeric", month: "long" })}</span>
+                  <span className="font-semibold text-slate-900">
+                    {new Date(checkOut + "T12:00:00").toLocaleDateString("es-CL", { weekday: "short", day: "numeric", month: "long" })}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center py-3 border-b border-slate-100">
                   <span className="text-sm text-slate-500">Huéspedes</span>
-                  <span className="font-semibold text-slate-900">{guests} {guests === 1 ? "persona" : "personas"}</span>
+                  <span className="font-semibold text-slate-900">
+                    {adults} adulto{adults !== 1 ? "s" : ""}{children > 0 ? ` · ${children} niño${children !== 1 ? "s" : ""}` : ""}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center py-3">
                   <span className="text-sm text-slate-500">Noches</span>
@@ -346,9 +365,7 @@ export default function ReservePage() {
 
               <div className="flex justify-between items-center pt-2 border-t border-slate-100">
                 <button onClick={() => setStep("extras")}
-                  className="text-sm text-slate-500 hover:text-slate-900 transition-colors">
-                  ← Volver
-                </button>
+                  className="text-sm text-slate-500 hover:text-slate-900 transition-colors">← Volver</button>
                 <button onClick={handleSubmit} disabled={submitting}
                   className="bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 text-white text-sm font-bold px-8 py-3 rounded-xl transition-colors shadow-lg shadow-teal-200 disabled:shadow-none disabled:cursor-not-allowed">
                   {submitting ? "Creando reserva..." : "Confirmar reserva ✓"}
@@ -358,7 +375,7 @@ export default function ReservePage() {
           )}
         </div>
 
-        {/* Resumen lateral */}
+        {/* Sidebar */}
         <div className="lg:sticky lg:top-24 self-start">
           <div className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
             <div className="aspect-video bg-slate-100">
@@ -377,8 +394,14 @@ export default function ReservePage() {
               <div className="space-y-2 pt-4 border-t border-slate-100">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">${hotel.price.toLocaleString()} × {nights} {nights === 1 ? "noche" : "noches"}</span>
-                  <span className="font-semibold text-slate-900">${baseTotal.toLocaleString()}</span>
+                  <span className="font-semibold text-slate-900">${(hotel.price * nights).toLocaleString()}</span>
                 </div>
+                {extraBeds > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">🛏️ {extraBeds} cama{extraBeds > 1 ? "s" : ""} extra × {nights}</span>
+                    <span className="font-semibold text-slate-900">${(extraBeds * extraBedPrice * nights).toLocaleString()}</span>
+                  </div>
+                )}
                 {extrasArray.map((e) => (
                   <div key={e.type} className="flex justify-between text-sm">
                     <span className="text-slate-500">{e.icon} {e.label} ×{e.quantity}</span>
