@@ -12,6 +12,30 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U uai_user -d hotel_boutique"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nextjs-app:
+    build:
+      context: ./my-nextjs-app
+      dockerfile: Dockerfile
+    container_name: wave_nextjs
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: "postgresql://uai_user:uai_password@postgres-db:5432/hotel_boutique?schema=public"
+      NEXTAUTH_SECRET: "392b35bf4468b12f36488bd23dbb9d2f"
+      NEXTAUTH_URL: "http://localhost:3000"
+      GOOGLE_CLIENT_ID: "626142668201-5qeijnidac6oa79vq02lu9ufmbler0g2.apps.googleusercontent.com"
+      GOOGLE_CLIENT_SECRET: "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"
+      NODE_ENV: "production"
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgres_data:

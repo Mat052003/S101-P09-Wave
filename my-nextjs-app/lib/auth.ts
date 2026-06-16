@@ -1,16 +1,3 @@
-// src/lib/auth.ts
-// ─────────────────────────────────────────────────────────────────
-// ELEMENTOS CRIPTOGRÁFICOS USADOS EN ESTE ARCHIVO:
-//
-// #1  bcrypt (hash + salt)   → hashear y verificar contraseñas
-// #2  JWT sessionToken       → NextAuth firma cada sesión con HMAC-SHA256
-//                              usando NEXTAUTH_SECRET como llave
-// #3  OAuth2 tokens (SSO)    → Google devuelve access_token, id_token (JWT)
-//                              y refresh_token firmados con RS256
-// #4  CSPRNG OTP             → crypto.randomInt() usa el generador seguro
-//                              del sistema operativo (no Math.random)
-// ─────────────────────────────────────────────────────────────────
-
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
@@ -18,12 +5,18 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import prisma from "./prisma";
 
+const authSecret =
+  process.env.NEXTAUTH_SECRET ??
+  (process.env.NODE_ENV !== "production"
+    ? "wave-dev-secret-change-in-production"
+    : undefined);
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
 
-  // Elemento criptográfico #2: NextAuth usa NEXTAUTH_SECRET para
-  // firmar los JWT de sesión con HMAC-SHA256
-  secret: process.env.NEXTAUTH_SECRET,
+  trustHost: true,
+
+  secret: authSecret,
 
   session: {
     strategy: "jwt",
@@ -36,15 +29,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
 
   providers: [
-    // ── SSO con Google ────────────────────────────────────────────
-    // Elemento criptográfico #3: Google usa OAuth2 + OpenID Connect.
-    // Devuelve un id_token (JWT firmado con RS256 por Google)
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          prompt: "select_account",
+        },
+      },
     }),
 
-    // ── Login con email + contraseña ──────────────────────────────
     CredentialsProvider({
       name: "credentials",
       credentials: {
@@ -61,17 +55,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!user || !user.password) return null;
 
-        // Elemento criptográfico #1: bcrypt.compare() verifica la
-        // contraseña contra el hash almacenado (incluye salt)
         const passwordOk = await bcrypt.compare(
           credentials.password as string,
           user.password
         );
         if (!passwordOk) return null;
 
-        // ── Verificar OTP ─────────────────────────────────────────
-        // Elemento criptográfico #4: el OTP fue generado con
-        // crypto.randomInt() (CSPRNG) al momento del login
         if (credentials.otpCode) {
           const otp = await prisma.otpCode.findFirst({
             where: {

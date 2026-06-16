@@ -1,25 +1,41 @@
-// src/app/api/auth/send-otp/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
-    const { email } = await req.json();
+    const { email, password } = await req.json();
+
+    if (!email || !password) {
+      return NextResponse.json({ error: "Credenciales inválidas" }, { status: 400 });
+    }
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      // No revelar si el email existe o no (seguridad)
-      return NextResponse.json({ message: "Si el email existe, recibirás un código." });
+      return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 });
     }
 
-    // Invalidar OTPs anteriores del usuario
+    if (!user.password) {
+      return NextResponse.json(
+        {
+          error:
+            "Esta cuenta fue creada con Google. Puedes iniciar sesión con Google o completar tu registro para crear una contraseña.",
+        },
+        { status: 409 }
+      );
+    }
+
+    const passwordOk = await bcrypt.compare(password, user.password);
+    if (!passwordOk) {
+      return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 });
+    }
+
     await prisma.otpCode.updateMany({
       where: { userId: user.id, used: false },
       data: { used: true },
     });
 
-    // Elemento criptográfico #4: nuevo OTP con CSPRNG
     const otpCode = crypto.randomInt(100000, 999999).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -27,14 +43,13 @@ export async function POST(req: NextRequest) {
       data: { userId: user.id, code: otpCode, expiresAt },
     });
 
-    // En producción: enviar por email aquí
     console.log(`OTP para ${email}: ${otpCode}`);
 
     return NextResponse.json({
       message: "Código OTP enviado.",
       ...(process.env.NODE_ENV === "development" && { otpCode }),
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Error interno" }, { status: 500 });
   }
 }
