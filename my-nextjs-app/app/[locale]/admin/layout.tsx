@@ -29,6 +29,12 @@ const NAV = [
       { label: "Extras",       href: "/admin/extras" },
     ],
   },
+  {
+    label: "Vista Cliente",
+    icon: "▪",
+    href: "/dashboard?view=profile",
+    exact: false,
+  },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

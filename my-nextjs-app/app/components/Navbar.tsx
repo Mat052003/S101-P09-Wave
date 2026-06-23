@@ -109,7 +109,7 @@ export default function Navbar() {
                         <p className="text-xs text-white/40 truncate">{session?.user?.email}</p>
                       </div>
 
-                      <Link href="/dashboard" onClick={() => setMenuOpen(false)}
+                      <Link href={isAdmin ? "/dashboard?view=profile" : "/dashboard"} onClick={() => setMenuOpen(false)}
                         className="block px-4 py-2.5 text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors">
                         👤 {t("profile")}
                       </Link>

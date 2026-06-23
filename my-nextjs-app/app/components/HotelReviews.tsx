@@ -49,8 +49,18 @@ interface Stats {
 
 // ── Avatar helper ───────────────────────────────────────────────
 function Avatar({ name, image }: { name: string | null; image: string | null }) {
-  if (image) {
-    return <img src={image} alt={name ?? "User"} className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" />;
+  const [imgError, setImgError] = useState(false);
+
+  if (image && !imgError) {
+    return (
+      <img
+        src={image}
+        alt={name ?? "User"}
+        className="w-10 h-10 rounded-full object-cover"
+        referrerPolicy="no-referrer"
+        onError={() => setImgError(true)}
+      />
+    );
   }
   return (
     <div className="w-10 h-10 rounded-full bg-[#284B63] flex items-center justify-center text-[#F4F9E9] text-sm font-bold shrink-0">
@@ -276,6 +286,15 @@ export default function HotelReviews({ hotelId, isOwner }: Props) {
       router.push("/auth/login");
       return;
     }
+    
+    // Si es ADMIN, permitir reseña directamente (Modo de demostración)
+    // También aceptamos al admin si tiene el isOwner prop
+    if ((session.user as any).role === "ADMIN" || isOwner) {
+      setEligibleReservationId(null);
+      setShowReviewForm(true);
+      return;
+    }
+
     setCheckingEligibility(true);
     try {
       const res = await fetch("/api/reservations");
@@ -290,7 +309,7 @@ export default function HotelReviews({ hotelId, isOwner }: Props) {
         setEligibleReservationId(eligible.id);
         setShowReviewForm(true);
       } else {
-        alert("Solo puedes dejar una reseña si tienes una reserva pasada y confirmada en este hotel que aún no hayas reseñado.");
+        alert("Solo puedes dejar una reseña si tienes una reserva pasada y confirmada en este hotel que aún no hayas reseñado. (Los admins pueden probar directamente).");
       }
     } catch (e) {
       console.error(e);
@@ -309,16 +328,19 @@ export default function HotelReviews({ hotelId, isOwner }: Props) {
     setSubmittingReview(true);
     setReviewError("");
 
+    const payload: any = {
+      cleanliness,
+      location,
+      service,
+      comment,
+      hotelId: eligibleReservationId ? undefined : hotelId, // Send hotelId if no reservation ID is provided (for admins)
+      reservationId: eligibleReservationId,
+    };
+
     const res = await fetch("/api/reviews", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        reservationId: eligibleReservationId,
-        cleanliness,
-        location,
-        service,
-        comment,
-      }),
+      body: JSON.stringify(payload),
     });
 
     setSubmittingReview(false);
@@ -343,15 +365,6 @@ export default function HotelReviews({ hotelId, isOwner }: Props) {
     <section className="space-y-6 pt-6 border-t border-[#153243]/15">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="font-display text-2xl font-semibold text-[#153243]">{t("title")}</h2>
-        {!showReviewForm && (
-          <button
-            onClick={handleWriteReviewClick}
-            disabled={checkingEligibility}
-            className="bg-[#284B63] hover:bg-[#153243] disabled:opacity-50 text-[#F4F9E9] text-sm font-bold px-6 py-3 rounded-xl transition-colors shadow-sm"
-          >
-            {checkingEligibility ? "Verificando reserva..." : "Escribir Reseña"}
-          </button>
-        )}
       </div>
 
       {showReviewForm && (
@@ -464,15 +477,46 @@ export default function HotelReviews({ hotelId, isOwner }: Props) {
         <div className="bg-[#EEF0EB] border border-[#153243]/15 rounded-2xl p-8 text-center">
           <p className="text-4xl mb-3">💬</p>
           <p className="text-[#153243] font-semibold">{t("noReviews")}</p>
-          <p className="text-sm text-[#284B63]/75 mt-1">{t("beFirst")}</p>
+          <p className="text-sm text-[#284B63]/75 mt-1 mb-4">{t("beFirst")}</p>
+          {!showReviewForm && (
+            <button
+              onClick={handleWriteReviewClick}
+              disabled={checkingEligibility}
+              className="bg-[#284B63] hover:bg-[#153243] disabled:opacity-50 text-[#F4F9E9] text-sm font-bold px-6 py-2 rounded-xl transition-colors shadow-sm inline-block"
+            >
+              {checkingEligibility ? "Verificando..." : "Escribir Reseña"}
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid md:grid-cols-2 gap-6">
           {/* Column 1 — Platform reviews */}
           <div className="space-y-4">
-            <h3 className="text-sm font-bold uppercase tracking-[0.15em] text-[#284B63]">{t("localReviews")}</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold uppercase tracking-[0.15em] text-[#284B63]">{t("localReviews")}</h3>
+              {!showReviewForm && (
+                <button
+                  onClick={handleWriteReviewClick}
+                  disabled={checkingEligibility}
+                  className="bg-[#284B63] hover:bg-[#153243] disabled:opacity-50 text-[#F4F9E9] text-xs font-bold px-4 py-2 rounded-lg transition-colors shadow-sm"
+                >
+                  {checkingEligibility ? "Verificando..." : "Escribir Reseña"}
+                </button>
+              )}
+            </div>
             {localReviews.length === 0 ? (
-              <p className="text-sm text-[#284B63]/60 italic">{t("noLocalReviews")}</p>
+              <div className="bg-[#EEF0EB] border border-[#153243]/15 rounded-2xl p-6 text-center">
+                <p className="text-sm text-[#284B63]/60 italic mb-3">{t("noLocalReviews")}</p>
+                {!showReviewForm && (
+                  <button
+                    onClick={handleWriteReviewClick}
+                    disabled={checkingEligibility}
+                    className="bg-[#284B63] hover:bg-[#153243] disabled:opacity-50 text-[#F4F9E9] text-xs font-bold px-4 py-2 rounded-lg transition-colors shadow-sm"
+                  >
+                    {checkingEligibility ? "Verificando..." : "Sé el primero"}
+                  </button>
+                )}
+              </div>
             ) : (
               localReviews.map((review) => (
                 <LocalReviewCard

@@ -138,7 +138,7 @@ export default function HotelDetailPage() {
 
         {/* Gallery */}
         <section className="mb-6">
-          <div className="h-[30vh] sm:h-[40vh] md:h-[50vh] rounded-2xl sm:rounded-3xl overflow-hidden bg-[#284B63]/10 mb-2">
+          <div className="h-48 sm:h-64 md:h-80 lg:h-[400px] rounded-2xl sm:rounded-3xl overflow-hidden bg-[#284B63]/10 mb-2">
             <img src={images[mainImage]} alt={hotel.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           </div>
           <div className="grid grid-cols-4 gap-2 sm:gap-3">

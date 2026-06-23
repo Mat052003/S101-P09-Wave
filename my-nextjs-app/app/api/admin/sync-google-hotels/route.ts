@@ -86,7 +86,7 @@ async function searchPlacesNew(query: string, apiKey: string): Promise<PlaceNew[
       textQuery: query,
       includedType: "lodging",
       languageCode: "en",
-      maxResultCount: 10,
+      maxResultCount: 20,
       locationBias: {
         rectangle: {
           low: { latitude: -55.0, longitude: -76.0 },   // Southern tip of Chile

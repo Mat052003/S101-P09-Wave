@@ -191,10 +191,27 @@ export default function HotelsPage() {
   }
 
   useEffect(() => {
+    const savedIds = sessionStorage.getItem("compareIds");
+    if (savedIds) {
+      try { setSelectedIds(JSON.parse(savedIds)); } catch {}
+    }
+    const savedComparison = sessionStorage.getItem("comparisonHotels");
+    if (savedComparison) {
+      try { setComparisonHotels(JSON.parse(savedComparison)); } catch {}
+    }
+
     const timeoutId = window.setTimeout(() => { void fetchHotels(); }, 0);
     return () => { window.clearTimeout(timeoutId); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    sessionStorage.setItem("compareIds", JSON.stringify(selectedIds));
+  }, [selectedIds]);
+
+  useEffect(() => {
+    sessionStorage.setItem("comparisonHotels", JSON.stringify(comparisonHotels));
+  }, [comparisonHotels]);
 
   return (
     <div className="min-h-screen relative overflow-hidden text-[#153243]">
@@ -233,7 +250,7 @@ export default function HotelsPage() {
               <table className="min-w-full border-collapse text-center text-sm text-[#153243] [&_th]:align-middle [&_td]:align-middle [&_th]:border-l [&_td]:border-l [&_th]:border-[#153243]/14 [&_td]:border-[#153243]/14 [&_th:first-child]:border-l-0 [&_td:first-child]:border-l-0">
                 <thead>
                   <tr>
-                    <th className="border-b border-[#153243]/15 bg-[#EEF0EB] px-3 py-2 text-center text-xs font-bold uppercase tracking-[0.2em] text-[#284B63]">Metric</th>
+                    <th className="border-b border-[#153243]/15 bg-[#EEF0EB] px-3 py-2 text-center text-xs font-bold uppercase tracking-[0.2em] text-[#284B63]">{t("comparison.metric") || "Métrica"}</th>
                     {comparisonHotels.map((hotel, index) => {
                       const style = COMPARISON_COLUMN_STYLES[index % COMPARISON_COLUMN_STYLES.length];
                       return (
@@ -405,12 +422,21 @@ export default function HotelsPage() {
           )}
         </div>
 
-        {/* Content Layout: Results + Map */}
-        <div className="mt-8 flex flex-col lg:flex-row gap-8">
+        {/* Content Layout: Map + Results */}
+        <div className="mt-8 flex flex-col gap-8">
           
-          {/* Left Column: Results */}
-          <div className="flex-1">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          {/* Top Section: Map */}
+          {filteredHotels.filter(h => h.latitude && h.longitude).length > 0 && (
+            <div className="rounded-3xl overflow-hidden border border-[#153243]/16 shadow-[0_12px_28px_rgba(21,50,67,0.12)] h-[350px] sm:h-[450px] lg:h-[500px]">
+              <GoogleMapComponent
+                hotels={filteredHotels.filter(h => h.latitude && h.longitude) as Parameters<typeof GoogleMapComponent>[0]["hotels"]}
+              />
+            </div>
+          )}
+
+          {/* Bottom Section: Results */}
+          <div className="w-full">
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-display text-2xl md:text-3xl font-semibold text-[#153243]">{t("results", { count: filteredHotels.length })}</h2>
               <div className="flex items-center gap-2">
                 <span className="rounded-full border border-[#153243]/20 bg-[#EEF0EB] px-3 py-1 text-xs font-semibold text-[#153243]">
@@ -423,14 +449,14 @@ export default function HotelsPage() {
             {filteredHotels.length === 0 ? (
               <div className="panel rounded-3xl p-10 text-center text-[#284B63]">{t("noResults")}</div>
             ) : (
-              <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {filteredHotels.map((hotel) => {
                   const selected = selectedIds.includes(hotel.id);
                   return (
                     <article key={hotel.id}
-                      className={`overflow-hidden rounded-3xl border transition ${selected ? "border-[#153243]/40 bg-[#D9E0D4] shadow-[0_16px_34px_rgba(21,50,67,0.18)]" : "border-[#153243]/16 bg-[#EEF0EB] hover:bg-[#DDE4D8] hover:border-[#153243]/34 hover:shadow-[0_10px_22px_rgba(21,50,67,0.14)]"}`}>
+                      className={`overflow-hidden flex flex-col rounded-3xl border transition ${selected ? "border-[#153243]/40 bg-[#D9E0D4] shadow-[0_16px_34px_rgba(21,50,67,0.18)]" : "border-[#153243]/16 bg-[#EEF0EB] hover:bg-[#DDE4D8] hover:border-[#153243]/34 hover:shadow-[0_10px_22px_rgba(21,50,67,0.14)]"}`}>
                       <div onClick={() => toggleHotelForCompare(hotel.id)}
-                        className="aspect-[16/10] overflow-hidden bg-[#284B63]/10 cursor-pointer relative group"
+                        className="aspect-[4/3] overflow-hidden bg-[#284B63]/10 cursor-pointer relative group shrink-0"
                         role="button" tabIndex={0}
                         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleHotelForCompare(hotel.id); } }}>
                         <img src={getHotelImage(hotel)} alt={hotel.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -441,46 +467,50 @@ export default function HotelsPage() {
                         )}
                       </div>
 
-                      <div className="p-4 sm:p-5 cursor-pointer" onClick={() => toggleHotelForCompare(hotel.id)}
+                      <div className="p-4 sm:p-5 flex-1 flex flex-col cursor-pointer" onClick={() => toggleHotelForCompare(hotel.id)}
                         role="button" tabIndex={0}
                         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleHotelForCompare(hotel.id); } }}>
                         <div className="mb-3 flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
-                            <h3 className="font-display text-lg sm:text-xl font-semibold text-[#153243] leading-tight line-clamp-2">{hotel.name}</h3>
-                            <p className="text-xs uppercase tracking-[0.14em] text-[#284B63]/80">{hotel.location}</p>
+                            <h3 className="font-display text-lg font-semibold text-[#153243] leading-tight line-clamp-2">{hotel.name}</h3>
+                            <p className="text-[10px] sm:text-xs uppercase tracking-[0.14em] text-[#284B63]/80 mt-1">{hotel.location}</p>
                           </div>
-                          <span className={`shrink-0 whitespace-nowrap rounded-full px-2 sm:px-3 py-1 text-[11px] font-semibold ${selected ? "border border-[#153243] bg-[#284B63] text-[#F4F9E9]" : "border border-[#153243]/20 bg-[#EEF0EB] text-[#284B63]"}`}>
-                            {selected ? t("selectedBadge") : t("clickToCompare")}
-                          </span>
                         </div>
 
-                        <p className="line-clamp-3 text-sm text-[#284B63]/88 leading-7">{hotel.description}</p>
+                        <p className="line-clamp-3 text-xs sm:text-sm text-[#284B63]/88 leading-6 mb-4">{hotel.description}</p>
 
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          <span className="rounded-full border border-[#153243] bg-[#284B63] px-2.5 py-1 text-xs font-semibold text-[#F4F9E9]">
-                            ${hotel.price.toFixed(0)} / night
-                          </span>
-                          <span className="rounded-full border border-[#153243]/18 bg-[#F4F9E9] px-2.5 py-1 text-xs font-semibold text-[#153243]">
-                            {EXPERIENCE_LABELS[hotel.experienceType]}
-                          </span>
-                          <span className="rounded-full border border-[#153243]/18 bg-[#F4F9E9] px-2.5 py-1 text-xs font-semibold text-[#153243]">
-                            {"★".repeat(hotel.stars)}
-                          </span>
-                        </div>
+                        <div className="mt-auto">
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            <span className="rounded-full border border-[#153243] bg-[#284B63] px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-[#F4F9E9]">
+                              ${hotel.price.toFixed(0)} / noche
+                            </span>
+                            <span className="rounded-full border border-[#153243]/18 bg-[#F4F9E9] px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-[#153243]">
+                              {EXPERIENCE_LABELS[hotel.experienceType]}
+                            </span>
+                            <span className="rounded-full border border-[#153243]/18 bg-[#F4F9E9] px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-[#153243]">
+                              {"★".repeat(hotel.stars)}
+                            </span>
+                          </div>
 
-                        <div className="mt-4">
-                          <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[#284B63]">{t("filters.services")}</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {hotel.services.map((service) => (
-                              <span key={service} className="rounded-full border border-[#153243]/18 bg-[#EEF0EB] px-2 py-0.5 text-xs text-[#153243]">
-                                {translateService(service)}
-                              </span>
-                            ))}
+                          <div>
+                            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#284B63]">{t("filters.services")}</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {hotel.services.slice(0, 4).map((service) => (
+                                <span key={service} className="rounded-full border border-[#153243]/18 bg-[#EEF0EB] px-2 py-0.5 text-[10px] text-[#153243]">
+                                  {translateService(service)}
+                                </span>
+                              ))}
+                              {hotel.services.length > 4 && (
+                                <span className="rounded-full border border-[#153243]/18 bg-[#EEF0EB] px-2 py-0.5 text-[10px] text-[#153243]">
+                                  +{hotel.services.length - 4}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
 
-                      <div className="px-4 sm:px-5 pb-5 pt-2 border-t border-[#153243]/15">
+                      <div className="px-4 sm:px-5 pb-5 pt-3 border-t border-[#153243]/15 mt-auto">
                         <Link href={`/hotels/${hotel.id}`} onClick={(e) => e.stopPropagation()}
                           className="block w-full text-center rounded-full border-2 border-[#153243] bg-[#284B63] hover:bg-[#153243] text-[#F4F9E9] text-xs font-bold py-2.5 transition-colors">
                           {t("viewDetails")}
@@ -492,17 +522,6 @@ export default function HotelsPage() {
               </div>
             )}
           </div>
-
-          {/* Right Column: Map */}
-          {filteredHotels.filter(h => h.latitude && h.longitude).length > 0 && (
-            <div className="lg:w-1/3 xl:w-2/5 shrink-0">
-              <div className="sticky top-24 rounded-3xl overflow-hidden border border-[#153243]/16 shadow-lg h-[600px] lg:h-[calc(100vh-8rem)]">
-                <GoogleMapComponent
-                  hotels={filteredHotels.filter(h => h.latitude && h.longitude) as Parameters<typeof GoogleMapComponent>[0]["hotels"]}
-                />
-              </div>
-            </div>
-          )}
         </div>
 
       </div>
