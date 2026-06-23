@@ -3,13 +3,13 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const EXTRA_TYPES = [
-  { value: "BREAKFAST",  label: "Desayuno",   icon: "🥐" },
-  { value: "SPA",        label: "Spa",        icon: "💆" },
-  { value: "TOUR",       label: "Tour",       icon: "🗺️" },
-  { value: "TRANSPORT",  label: "Transporte", icon: "🚗" },
+  { value: "BREAKFAST", label: "Desayuno"   },
+  { value: "SPA",       label: "Spa"        },
+  { value: "TOUR",      label: "Tour"       },
+  { value: "TRANSPORT", label: "Transporte" },
 ];
 
 type Hotel = { id: string; name: string };
@@ -20,61 +20,75 @@ type Extra = {
 };
 
 export default function AdminExtrasPage() {
-  const [extras, setExtras]       = useState<Extra[]>([]);
-  const [myHotels, setMyHotels]   = useState<Hotel[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [showForm, setShowForm]   = useState(false);
-  const [editing, setEditing]     = useState<Extra | null>(null);
+  const [extras, setExtras]         = useState<Extra[]>([]);
+  const [myHotels, setMyHotels]     = useState<Hotel[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [showForm, setShowForm]     = useState(false);
+  const [editing, setEditing]       = useState<Extra | null>(null);
 
-  const [name, setName]             = useState("");
+  const fileInputRef  = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const [name, setName]               = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice]           = useState("");
-  const [image, setImage]           = useState("");
-  const [type, setType]             = useState("BREAKFAST");
+  const [price, setPrice]             = useState("");
+  const [image, setImage]             = useState("");
+  const [imageUrl, setImageUrl]       = useState("");
+  const [type, setType]               = useState("BREAKFAST");
   const [selectedHotels, setSelectedHotels] = useState<string[]>([]);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError]           = useState("");
+  const [submitting, setSubmitting]   = useState(false);
+  const [error, setError]             = useState("");
 
   useEffect(() => {
     Promise.all([
       fetch("/api/admin/extras").then((r) => r.json()),
       fetch("/api/admin/hotels").then((r) => r.json()),
     ]).then(([exts, hotels]) => {
-      setExtras(exts || []);
-      setMyHotels(hotels || []);
+      setExtras(Array.isArray(exts) ? exts : []);
+      setMyHotels(Array.isArray(hotels) ? hotels : []);
       setLoading(false);
     });
   }, []);
 
   function openCreate() {
     setEditing(null); setName(""); setDescription(""); setPrice("");
-    setImage(""); setType("BREAKFAST"); setSelectedHotels([]);
+    setImage(""); setImageUrl(""); setType("BREAKFAST"); setSelectedHotels([]);
     setError(""); setShowForm(true);
   }
 
   function openEdit(extra: Extra) {
     setEditing(extra); setName(extra.name); setDescription(extra.description || "");
-    setPrice(extra.price.toString()); setImage(extra.image || ""); setType(extra.type);
-    setSelectedHotels(extra.hotels.map((h) => h.hotel.id));
+    setPrice(extra.price.toString()); setImage(extra.image || ""); setImageUrl("");
+    setType(extra.type); setSelectedHotels(extra.hotels.map((h) => h.hotel.id));
     setError(""); setShowForm(true);
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    const res  = await fetch("/api/upload", { method: "POST", body: formData });
+    const data = await res.json();
+    setUploading(false);
+    if (res.ok) { setImage(data.url); }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true); setError("");
-
+    const finalImage = image || imageUrl || null;
     const url    = editing ? `/api/admin/extras/${editing.id}` : "/api/admin/extras";
     const method = editing ? "PATCH" : "POST";
-
-    const res  = await fetch(url, {
+    const res    = await fetch(url, {
       method, headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, description, price, image: image || null, type, hotelIds: selectedHotels }),
+      body: JSON.stringify({ name, description, price, image: finalImage, type, hotelIds: selectedHotels }),
     });
     const data = await res.json();
     setSubmitting(false);
-
     if (!res.ok) { setError(data.error || "Error al guardar"); return; }
-
     if (editing) {
       setExtras((prev) => prev.map((e) => e.id === editing.id ? data : e));
     } else {
@@ -115,16 +129,18 @@ export default function AdminExtrasPage() {
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Tipo */}
               <div>
                 <label className={labelClass}>Tipo</label>
                 <div className="grid grid-cols-4 gap-2">
                   {EXTRA_TYPES.map((t) => (
                     <button key={t.value} type="button" onClick={() => setType(t.value)}
-                      className={`p-3 rounded-xl border-2 text-center transition-all ${
-                        type === t.value ? "border-[#C9A87C] bg-[#C9A87C]/10" : "border-[#0B1F2D]/15 bg-white hover:border-[#0B1F2D]/30"
+                      className={`p-2.5 rounded-xl border-2 text-center text-xs font-bold transition-all ${
+                        type === t.value
+                          ? "border-[#0B1F2D] bg-[#0B1F2D] text-white"
+                          : "border-[#0B1F2D]/15 text-[#0B1F2D]/60 hover:border-[#0B1F2D]/40"
                       }`}>
-                      <span className="block text-xl mb-1">{t.icon}</span>
-                      <span className="text-[10px] font-bold text-[#0B1F2D]/70">{t.label}</span>
+                      {t.label}
                     </button>
                   ))}
                 </div>
@@ -149,17 +165,26 @@ export default function AdminExtrasPage() {
                   className={`${inputClass} resize-none`} />
               </div>
 
+              {/* Imagen */}
               <div>
-                <label className={labelClass}>URL de imagen</label>
-                <input type="url" value={image} onChange={(e) => setImage(e.target.value)}
-                  placeholder="https://..." className={inputClass} />
-                {image && (
-                  <div className="mt-2 w-full h-24 rounded-xl overflow-hidden">
-                    <img src={image} alt="" className="w-full h-full object-cover" />
+                <label className={labelClass}>Imagen</label>
+                <div className="space-y-2">
+                  <div className="flex gap-2 items-center">
+                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileUpload}
+                      className="flex-1 text-sm text-[#0B1F2D]/60 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#0B1F2D] file:text-white hover:file:bg-[#1B4965] file:cursor-pointer cursor-pointer border-2 border-[#0B1F2D]/20 rounded-xl px-3 py-2" />
+                    {uploading && <span className="text-xs text-[#C9A87C]">Subiendo...</span>}
+                  </div>
+                  <input type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)}
+                    placeholder="O pega una URL de imagen..." className={inputClass} />
+                </div>
+                {(image || imageUrl) && (
+                  <div className="mt-2 w-full h-28 rounded-xl overflow-hidden border-2 border-[#0B1F2D]/10">
+                    <img src={image || imageUrl} alt="" className="w-full h-full object-cover" />
                   </div>
                 )}
               </div>
 
+              {/* Hoteles */}
               {myHotels.length > 0 && (
                 <div>
                   <label className={labelClass}>Asignar a hoteles</label>
@@ -186,7 +211,7 @@ export default function AdminExtrasPage() {
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowForm(false)}
-                  className="flex-1 bg-[#FAF6F0] border-2 border-[#0B1F2D]/20 text-[#0B1F2D] font-bold py-3 rounded-2xl">
+                  className="flex-1 bg-white border-2 border-[#0B1F2D]/20 text-[#0B1F2D] font-bold py-3 rounded-2xl">
                   Cancelar
                 </button>
                 <button type="submit" disabled={submitting}
@@ -204,7 +229,6 @@ export default function AdminExtrasPage() {
         <p className="text-[#0B1F2D]/40 text-center py-16">Cargando...</p>
       ) : extras.length === 0 ? (
         <div className="bg-white rounded-3xl border-2 border-[#0B1F2D]/10 p-16 text-center">
-          <div className="text-5xl mb-4">🎁</div>
           <h2 className="font-display text-2xl font-bold text-[#0B1F2D]">Sin extras aún</h2>
           <p className="text-[#0B1F2D]/40 text-sm mt-2">Crea tu primer extra para tus huéspedes</p>
         </div>
@@ -221,38 +245,34 @@ export default function AdminExtrasPage() {
                 )}
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">{typeInfo?.icon}</span>
-                      <div>
-                        <h3 className="font-bold text-sm text-[#0B1F2D]">{extra.name}</h3>
-                        <p className="text-[10px] text-[#0B1F2D]/40 uppercase tracking-wider">{typeInfo?.label}</p>
-                      </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#0B1F2D]/40 block mb-0.5">
+                        {typeInfo?.label}
+                      </span>
+                      <h3 className="font-bold text-sm text-[#0B1F2D]">{extra.name}</h3>
                     </div>
                     <p className="font-display text-lg font-bold text-[#0B1F2D] shrink-0">${extra.price}</p>
                   </div>
-
                   {extra.description && (
-                    <p className="text-xs text-[#0B1F2D]/50 line-clamp-2 mb-2">{extra.description}</p>
+                    <p className="text-xs text-[#0B1F2D]/50 line-clamp-2 mb-3">{extra.description}</p>
                   )}
-
                   {extra.hotels.length > 0 && (
                     <div className="flex flex-wrap gap-1 mb-3">
                       {extra.hotels.map((h) => (
-                        <span key={h.hotel.id} className="text-[10px] bg-[#0B1F2D]/5 text-[#0B1F2D]/50 px-2 py-0.5 rounded-full">
-                          🏨 {h.hotel.name}
+                        <span key={h.hotel.id} className="text-[10px] bg-[#0B1F2D]/5 text-[#0B1F2D]/50 px-2 py-0.5 rounded-full border border-[#0B1F2D]/10">
+                          {h.hotel.name}
                         </span>
                       ))}
                     </div>
                   )}
-
                   <div className="flex gap-2">
                     <button onClick={() => openEdit(extra)}
                       className="flex-1 bg-[#0B1F2D] hover:bg-[#1B4965] text-white text-xs font-bold py-2 rounded-xl transition-colors">
                       Editar
                     </button>
                     <button onClick={() => handleDelete(extra.id)}
-                      className="px-3 bg-rose-50 border-2 border-rose-200 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-xl">
-                      🗑️
+                      className="px-4 bg-rose-50 border-2 border-rose-200 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-xl">
+                      Eliminar
                     </button>
                   </div>
                 </div>
