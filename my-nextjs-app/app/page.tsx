@@ -2,106 +2,116 @@
 import { auth } from "@/lib/auth";
 import Link from "next/link";
 import HomeSearchForm from "./components/HomeSearchForm";
+import HeroSlideshow from "./components/HeroSlideshow";
 
 export default async function Home() {
-  const session = await auth();
+  const session    = await auth();
   const isLoggedIn = !!session?.user?.id;
 
   return (
-    <div className="relative min-h-[calc(100vh-4rem)] overflow-hidden">
+    <div className="bg-[#FAF6F0]">
 
-      {/* ── Fondo de mar ───────────────────────────────────────────── */}
-      <div className="absolute inset-0 z-0">
-        <img
-          src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=2400&q=90"
-          alt="Mar"
-          className="w-full h-full object-cover"
-        />
-        {/* Overlay gradiente para mejor contraste */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#153243]/40 via-[#153243]/10 to-[#153243]/30" />
-      </div>
+      {/* ── HERO ─────────────────────────────────────────────────── */}
+      <section className="relative h-[90vh] max-h-[800px] overflow-hidden">
+        <HeroSlideshow />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0B1F2D]/85 via-[#0B1F2D]/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0B1F2D]/60 via-transparent to-transparent" />
 
-      {/* ── Contenido ──────────────────────────────────────────────── */}
-      <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-8 py-12 md:py-20 grid lg:grid-cols-2 gap-12 items-center min-h-[calc(100vh-4rem)]">
+        <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-8 h-full grid lg:grid-cols-2 gap-12 items-center py-8">
+          <div className="order-2 lg:order-1">
+            <HomeSearchForm />
+          </div>
 
-        {/* ── Formulario izquierda ──────────────────────────────────── */}
-        <div className="lg:ml-0">
-          <HomeSearchForm />
-        </div>
+          <div className="order-1 lg:order-2 text-right hidden lg:flex flex-col items-end justify-center">
+            <p className="text-[#C9A87C] text-xs font-semibold uppercase tracking-[0.4em] mb-4">
+              Boutique Hotels · Chile
+            </p>
+            <h1 className="font-display font-bold text-white leading-[0.85] tracking-tight">
+              <span className="block text-[7rem] xl:text-[9rem]">Wave</span>
+              <span className="block text-[7rem] xl:text-[9rem] text-[#C9A87C] italic -mt-3">.</span>
+            </h1>
+            <p className="font-display italic text-white/80 text-lg xl:text-xl mt-3 max-w-sm leading-relaxed">
+              Donde el mar se convierte en tu hogar por unos días.
+            </p>
+            <div className="flex gap-8 mt-6 pt-6 border-t border-white/20">
+              {[
+                { n: "15+",  l: "Hoteles"    },
+                { n: "4.9★", l: "Valoración" },
+                { n: "5",    l: "Regiones"   },
+              ].map((s) => (
+                <div key={s.l} className="text-right">
+                  <p className="font-display text-2xl font-bold text-white">{s.n}</p>
+                  <p className="text-white/50 text-xs uppercase tracking-wider mt-1">{s.l}</p>
+                </div>
+              ))}
+            </div>
+          </div>
 
-        {/* ── Wave en la derecha ────────────────────────────────────── */}
-        <div className="hidden lg:flex flex-col items-end justify-center text-right">
-          <p className="text-xs font-semibold uppercase tracking-[0.4em] text-white/80 mb-4">
-            Boutique Hotels Chile
-          </p>
-          <h1 className="font-display text-[10rem] xl:text-[14rem] font-bold text-white leading-[0.8] tracking-tighter drop-shadow-2xl">
-            Wave<span className="text-[#F4F9E9]">.</span>
-          </h1>
-          <p className="font-display text-2xl xl:text-3xl text-white/90 italic mt-4 max-w-md drop-shadow-lg">
-            Sumérgete en estadías que se sienten como un sueño.
-          </p>
-
-          {/* Stats */}
-          <div className="flex gap-8 mt-8 pt-8 border-t border-white/30 w-full max-w-md justify-end">
-            {[
-              { valor: "13+",  label: "Hoteles" },
-              { valor: "4.9★", label: "Valoración" },
-              { valor: "5",    label: "Regiones" },
-            ].map((s) => (
-              <div key={s.label} className="text-right">
-                <p className="font-display text-3xl font-bold text-white drop-shadow">{s.valor}</p>
-                <p className="text-xs text-white/70 uppercase tracking-wider mt-1">{s.label}</p>
-              </div>
-            ))}
+          <div className="order-1 lg:hidden text-center">
+            <h1 className="font-display text-5xl font-bold text-white tracking-tight">
+              Wave<span className="text-[#C9A87C] italic">.</span>
+            </h1>
+            <p className="text-white/70 mt-2 text-sm">Boutique Hotels · Chile</p>
           </div>
         </div>
+      </section>
 
-        {/* ── Logo Wave en mobile ────────────────────────────────────── */}
-        <div className="lg:hidden text-center">
-          <h1 className="font-display text-7xl md:text-8xl font-bold text-white tracking-tighter drop-shadow-2xl">
-            Wave<span className="text-[#F4F9E9]">.</span>
-          </h1>
-          <p className="text-white/80 mt-2">Boutique Hotels Chile</p>
+      {/* ── EXPERIENCIAS ─────────────────────────────────────────── */}
+      <section className="py-16 px-6 md:px-8 max-w-7xl mx-auto">
+        <div className="text-center mb-10">
+          <p className="text-[#C9A87C] text-xs font-semibold uppercase tracking-[0.3em] mb-3">Nuestras experiencias</p>
+          <h2 className="font-display text-3xl md:text-4xl font-bold text-[#0B1F2D]">
+            Cada estadía, <span className="italic text-[#1B4965]">única</span>
+          </h2>
+          <p className="text-[#0B1F2D]/60 mt-3 max-w-lg mx-auto text-sm">
+            Hoteles boutique cuidadosamente seleccionados para experiencias que no olvidarás.
+          </p>
         </div>
-      </div>
 
-      {/* ── Indicador scroll ─────────────────────────────────────────── */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 text-white/60">
-        <span className="text-xs uppercase tracking-[0.3em]">Explora</span>
-        <div className="w-px h-8 bg-white/40 animate-pulse" />
-      </div>
+        <div className="grid md:grid-cols-3 gap-5">
+          {[
+            { img: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800&q=80", tipo: "Wellness",  desc: "Retiros de bienestar entre naturaleza y silencio", icon: "🧘" },
+            { img: "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80", tipo: "Aventura",  desc: "Expediciones boutique en paisajes extremos",       icon: "🏔️" },
+            { img: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80", tipo: "Romántico", desc: "Escapadas íntimas con vistas y detalles exclusivos", icon: "🌹" },
+          ].map((e) => (
+            <Link href="/hotels" key={e.tipo}
+              className="group relative aspect-[4/3] rounded-3xl overflow-hidden block">
+              <img src={e.img} alt={e.tipo} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0B1F2D]/85 via-[#0B1F2D]/10 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-5">
+                <span className="text-xl mb-1 block">{e.icon}</span>
+                <h3 className="font-display text-xl font-bold text-white">{e.tipo}</h3>
+                <p className="text-white/70 text-xs mt-1">{e.desc}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
 
-      {/* ── CTA si no está logueado ─────────────────────────────────── */}
+      {/* ── CTA ──────────────────────────────────────────────────── */}
       {!isLoggedIn && (
-        <div className="relative z-10 bg-[#F4F9E9] border-t border-[#153243]/15">
-          <div className="max-w-7xl mx-auto px-6 md:px-8 py-16 text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#284B63] mb-3">
-              Únete gratis
-            </p>
-            <h2 className="font-display text-4xl md:text-5xl font-semibold text-[#153243] tracking-tight">
-              Tu próxima estadía boutique
-              <br />
-              <span className="text-[#284B63] italic">te está esperando.</span>
+        <section className="py-20 px-6 md:px-8 bg-[#0B1F2D]">
+          <div className="max-w-4xl mx-auto text-center">
+            <p className="text-[#C9A87C] text-xs font-semibold uppercase tracking-[0.3em] mb-4">Únete gratis</p>
+            <h2 className="font-display text-4xl md:text-5xl font-bold text-white leading-tight">
+              Tu próxima estadía<br />
+              <span className="italic text-[#C9A87C]">te está esperando</span>
             </h2>
-            <p className="text-[#284B63]/85 mt-4 max-w-md mx-auto">
-              Crea tu cuenta gratis y accede a hoteles boutique únicos en todo Chile.
+            <p className="text-white/50 mt-5 max-w-md mx-auto text-sm">
+              Crea tu cuenta y accede a hoteles boutique únicos en todo Chile.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
-              <Link
-                href="/auth/register"
-                className="inline-flex items-center justify-center gap-2 bg-[#284B63] hover:bg-[#153243] text-[#F4F9E9] font-bold px-8 py-4 rounded-full transition-colors text-sm"
-              >
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
+              <Link href="/auth/register"
+                className="bg-[#C9A87C] hover:bg-[#E8845A] text-[#0B1F2D] font-bold px-8 py-3.5 rounded-full transition-colors text-sm">
                 Crear cuenta gratis →
               </Link>
-              <Link
-                href="/auth/login"
-                className="inline-flex items-center justify-center gap-2 bg-[#EEF0EB] hover:bg-[#F4F9E9] border-2 border-[#153243] text-[#153243] font-bold px-8 py-4 rounded-full transition-colors text-sm"
-              >
+              <Link href="/auth/login"
+                className="border border-white/20 hover:border-white/40 text-white font-semibold px-8 py-3.5 rounded-full transition-colors text-sm">
                 Ya tengo cuenta
               </Link>
             </div>
           </div>
-        </div>
+        </section>
       )}
     </div>
   );
