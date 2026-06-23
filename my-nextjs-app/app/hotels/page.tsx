@@ -4,13 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import GoogleMapComponent from "@/app/components/GoogleMap";
 
-type ExperienceType =
-  | "RELAX"
-  | "WELLNESS"
-  | "GASTRONOMIC"
-  | "ADVENTURE"
-  | "ROMANTIC"
-  | "CULTURAL";
+type ExperienceType = "RELAX" | "WELLNESS" | "GASTRONOMIC" | "ADVENTURE" | "ROMANTIC" | "CULTURAL";
 
 type Hotel = {
   id: string;
@@ -28,30 +22,20 @@ type Hotel = {
 };
 
 const EXPERIENCE_LABELS: Record<ExperienceType, string> = {
-  RELAX: "Relax",
-  WELLNESS: "Wellness",
-  GASTRONOMIC: "Gastronomic",
-  ADVENTURE: "Adventure",
-  ROMANTIC: "Romantic",
-  CULTURAL: "Cultural",
+  RELAX: "Relax", WELLNESS: "Wellness", GASTRONOMIC: "Gastronómico",
+  ADVENTURE: "Aventura", ROMANTIC: "Romántico", CULTURAL: "Cultural",
 };
 
 const EXPERIENCE_FALLBACK_IMAGES: Record<ExperienceType, string> = {
-  RELAX:       "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=800&q=80",
-  WELLNESS:    "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800&q=80",
+  RELAX: "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=800&q=80",
+  WELLNESS: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800&q=80",
   GASTRONOMIC: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80",
-  ADVENTURE:   "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80",
-  ROMANTIC:    "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80",
-  CULTURAL:    "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&q=80",
+  ADVENTURE: "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80",
+  ROMANTIC: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80",
+  CULTURAL: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&q=80",
 };
 
 const SERVICES = ["Spa", "Rooftop", "Pool", "Chef Table", "Airport Transfer", "Pet Friendly", "Yoga", "Winery"];
-
-const COMPARISON_COLUMN_STYLES = [
-  { header: "bg-[#284B63]/14 text-[#153243] border-[#153243]/20", cell: "bg-[#EEF0EB]" },
-  { header: "bg-[#B4B8AB]/24 text-[#153243] border-[#153243]/16", cell: "bg-[#F4F9E9]" },
-  { header: "bg-[#153243]/12 text-[#153243] border-[#153243]/22", cell: "bg-[#EEF0EB]" },
-];
 
 export default function HotelsPage() {
   const [location, setLocation] = useState("");
@@ -67,297 +51,166 @@ export default function HotelsPage() {
   const [comparing, setComparing] = useState(false);
 
   const selectedHotels = useMemo(
-    () => filteredHotels.filter((hotel) => selectedIds.includes(hotel.id)),
+    () => filteredHotels.filter((h) => selectedIds.includes(h.id)),
     [filteredHotels, selectedIds]
   );
 
-  const maxComparisonPrice = useMemo(() => {
-    if (comparisonHotels.length === 0) return null;
-    return Math.max(...comparisonHotels.map((hotel) => hotel.price));
-  }, [comparisonHotels]);
+  const maxComparisonPrice = useMemo(() =>
+    comparisonHotels.length ? Math.max(...comparisonHotels.map((h) => h.price)) : null,
+    [comparisonHotels]
+  );
 
-  const maxComparisonStars = useMemo(() => {
-    if (comparisonHotels.length === 0) return null;
-    return Math.max(...comparisonHotels.map((hotel) => hotel.stars));
-  }, [comparisonHotels]);
+  const maxComparisonStars = useMemo(() =>
+    comparisonHotels.length ? Math.max(...comparisonHotels.map((h) => h.stars)) : null,
+    [comparisonHotels]
+  );
 
   function getHotelImage(hotel: Hotel) {
     return hotel.images?.[0] || EXPERIENCE_FALLBACK_IMAGES[hotel.experienceType] || EXPERIENCE_FALLBACK_IMAGES.RELAX;
   }
 
   async function fetchHotels(options?: {
-    location?: string;
-    experienceType?: string;
-    minPrice?: string;
-    maxPrice?: string;
-    services?: string[];
+    location?: string; experienceType?: string; minPrice?: string; maxPrice?: string; services?: string[];
   }) {
-    setLoading(true);
-    setError("");
-
-    const activeLocation = options?.location ?? location;
-    const activeExperienceType = options?.experienceType ?? experienceType;
-    const activeMinPrice = options?.minPrice ?? minPrice;
-    const activeMaxPrice = options?.maxPrice ?? maxPrice;
-    const activeServices = options?.services ?? services;
-
+    setLoading(true); setError("");
+    const al = options?.location ?? location;
+    const ae = options?.experienceType ?? experienceType;
+    const ami = options?.minPrice ?? minPrice;
+    const ama = options?.maxPrice ?? maxPrice;
+    const as_ = options?.services ?? services;
     const params = new URLSearchParams();
-    if (activeLocation.trim()) params.set("location", activeLocation.trim());
-    if (activeExperienceType) params.set("experienceType", activeExperienceType);
-    params.set("minPrice", activeMinPrice || "0");
-    params.set("maxPrice", activeMaxPrice || "999999");
-    if (activeServices.length > 0) params.set("services", activeServices.join(","));
-
+    if (al.trim()) params.set("location", al.trim());
+    if (ae) params.set("experienceType", ae);
+    params.set("minPrice", ami || "0");
+    params.set("maxPrice", ama || "999999");
+    if (as_.length > 0) params.set("services", as_.join(","));
     const res = await fetch(`/api/hotels?${params.toString()}`);
     const data = await res.json();
     setLoading(false);
-
-    if (!res.ok) {
-      setError(data.error || "No se pudieron cargar hoteles");
-      return;
-    }
-
+    if (!res.ok) { setError(data.error || "Error al cargar hoteles"); return; }
     setFilteredHotels(data.hotels || []);
-    setSelectedIds((prev) => prev.filter((id) => (data.hotels || []).some((hotel: Hotel) => hotel.id === id)));
+    setSelectedIds((prev) => prev.filter((id) => (data.hotels || []).some((h: Hotel) => h.id === id)));
     setComparisonHotels([]);
-  }
-
-  async function filterHotels() {
-    await fetchHotels();
   }
 
   function toggleService(service: string) {
-    setServices((current) =>
-      current.includes(service)
-        ? current.filter((item) => item !== service)
-        : [...current, service]
-    );
+    setServices((cur) => cur.includes(service) ? cur.filter((s) => s !== service) : [...cur, service]);
   }
 
   function toggleHotelForCompare(hotelId: string) {
-    setError("");
-    setComparisonHotels([]);
-
-    setSelectedIds((current) => {
-      if (current.includes(hotelId)) return current.filter((id) => id !== hotelId);
-      if (current.length >= 3) {
-        setError("You can compare up to 3 hotels.");
-        return current;
-      }
-      return [...current, hotelId];
+    setError(""); setComparisonHotels([]);
+    setSelectedIds((cur) => {
+      if (cur.includes(hotelId)) return cur.filter((id) => id !== hotelId);
+      if (cur.length >= 3) { setError("Puedes comparar hasta 3 hoteles."); return cur; }
+      return [...cur, hotelId];
     });
   }
 
   async function runComparison() {
-    if (selectedIds.length < 2) {
-      setError("Select at least 2 hotels to compare.");
-      return;
-    }
-
-    setComparing(true);
-    setError("");
-
-    const res = await fetch("/api/hotels/compare", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ hotelIds: selectedIds }),
-    });
-
+    if (selectedIds.length < 2) { setError("Selecciona al menos 2 hoteles."); return; }
+    setComparing(true); setError("");
+    const res = await fetch("/api/hotels/compare", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hotelIds: selectedIds }) });
     const data = await res.json();
     setComparing(false);
-
-    if (!res.ok) {
-      setError(data.error || "No se pudo realizar la comparación");
-      return;
-    }
-
+    if (!res.ok) { setError(data.error || "Error en comparación"); return; }
     setComparisonHotels(data.hotels || []);
   }
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      void fetchHotels();
-    }, 0);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
+    const t = window.setTimeout(() => void fetchHotels(), 0);
+    return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const inputClass = "w-full bg-white border border-[#0B1F2D]/10 rounded-2xl px-4 py-2.5 text-sm text-[#0B1F2D] outline-none focus:border-[#C9A87C] focus:ring-4 focus:ring-[#C9A87C]/15 transition-all";
+  const labelClass = "mb-1.5 block text-[10px] font-bold uppercase tracking-[0.18em] text-[#0B1F2D]/50";
+
   return (
-    <div className="min-h-screen relative overflow-hidden text-[#153243]">
-      <div className="absolute inset-0 hero-grid opacity-30" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(180,184,171,0.34),_transparent_40%),radial-gradient(circle_at_top_right,_rgba(40,75,99,0.1),_transparent_35%),linear-gradient(180deg,_#eef0eb,_#f4f9e9)]" />
+    <div className="min-h-screen bg-[#FAF6F0] text-[#0B1F2D]">
+      <div className="mx-auto w-full max-w-7xl px-4 py-10 md:px-8 md:py-14">
 
-      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-10 md:px-8 md:py-14">
-        <header className="mb-10 flex flex-col gap-5 border-b border-[#153243]/15 pb-7 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#284B63]/75">Wave Boutique Hotels</p>
-            <h1 className="font-display mt-2 text-3xl md:text-5xl font-semibold tracking-tight text-[#153243]">
-              Boutique Hotel Search and Compare
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm md:text-[15px] text-[#284B63]/85 leading-7">
-              Busca, filtra y compara hoteles boutique de forma clara y directa.
-            </p>
-          </div>
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center justify-center rounded-full border-2 border-[#153243] bg-[#EEF0EB] px-5 py-2.5 text-sm font-semibold text-[#153243] transition hover:bg-[#F4F9E9]"
-          >
-            Ver mi perfil
-          </Link>
-        </header>
-
+        {/* Tabla comparación */}
         {comparisonHotels.length > 0 && (
-          <section className="mb-8 rounded-[1.5rem] border border-[#153243]/20 bg-[#F4F9E9]/90 p-5 md:p-7">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="font-display text-xl md:text-2xl font-semibold text-[#153243]">Comparison</h2>
-              <p className="text-xs uppercase tracking-[0.2em] text-[#284B63]/75">{comparisonHotels.length} hoteles seleccionados</p>
+          <section className="mb-10 rounded-3xl border border-[#0B1F2D]/10 bg-white overflow-hidden">
+            <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-[#0B1F2D]/8">
+              <h2 className="font-display text-xl font-bold text-[#0B1F2D]">Comparación</h2>
+              <span className="text-xs text-[#0B1F2D]/40 uppercase tracking-widest">{comparisonHotels.length} hoteles</span>
             </div>
-            <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full border-collapse text-center text-sm text-[#153243] [&_th]:align-middle [&_td]:align-middle [&_th]:border-l [&_td]:border-l [&_th]:border-[#153243]/14 [&_td]:border-[#153243]/14 [&_th:first-child]:border-l-0 [&_td:first-child]:border-l-0">
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-collapse text-sm text-center">
                 <thead>
                   <tr>
-                    <th className="border-b border-[#153243]/15 bg-[#EEF0EB] px-3 py-2 text-center text-xs font-bold uppercase tracking-[0.2em] text-[#284B63]">Metric</th>
-                    {comparisonHotels.map((hotel, index) => {
-                      const style = COMPARISON_COLUMN_STYLES[index % COMPARISON_COLUMN_STYLES.length];
-                      return (
-                        <th key={hotel.id} className={`border-b px-3 py-2 text-center text-xs font-bold uppercase tracking-[0.15em] ${style.header}`}>
-                          {hotel.name}
-                        </th>
-                      );
-                    })}
+                    <th className="bg-[#FAF6F0] px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-[#0B1F2D]/40">Métrica</th>
+                    {comparisonHotels.map((h) => (
+                      <th key={h.id} className="bg-[#0B1F2D] px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#FAF6F0]">
+                        {h.name}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td className="border-b border-[#153243]/14 bg-[#EEF0EB] px-3 py-3 text-xs font-bold uppercase tracking-[0.14em] text-[#284B63]">Location</td>
-                    {comparisonHotels.map((hotel, index) => {
-                      const style = COMPARISON_COLUMN_STYLES[index % COMPARISON_COLUMN_STYLES.length];
-                      return (
-                        <td key={hotel.id} className={`border-b border-[#153243]/14 px-3 py-3 font-medium text-[#153243] ${style.cell}`}>{hotel.location}</td>
-                      );
-                    })}
-                  </tr>
-                  <tr>
-                    <td className="border-b border-[#153243]/14 bg-[#EEF0EB] px-3 py-3 text-xs font-bold uppercase tracking-[0.14em] text-[#284B63]">Price / Night</td>
-                    {comparisonHotels.map((hotel, index) => {
-                      const style = COMPARISON_COLUMN_STYLES[index % COMPARISON_COLUMN_STYLES.length];
-                      const isHighest = hotel.price === maxComparisonPrice;
-                      return (
-                        <td key={hotel.id} className={`border-b border-[#153243]/14 px-3 py-3 ${isHighest ? "font-bold text-[#153243]" : "font-medium text-[#153243]"} ${style.cell}`}>${hotel.price.toFixed(0)}</td>
-                      );
-                    })}
-                  </tr>
-                  <tr>
-                    <td className="border-b border-[#153243]/14 bg-[#EEF0EB] px-3 py-3 text-xs font-bold uppercase tracking-[0.14em] text-[#284B63]">Experience</td>
-                    {comparisonHotels.map((hotel, index) => {
-                      const style = COMPARISON_COLUMN_STYLES[index % COMPARISON_COLUMN_STYLES.length];
-                      return (
-                        <td key={hotel.id} className={`border-b border-[#153243]/14 px-3 py-3 font-medium text-[#153243] ${style.cell}`}>{EXPERIENCE_LABELS[hotel.experienceType]}</td>
-                      );
-                    })}
-                  </tr>
-                  <tr>
-                    <td className="border-b border-[#153243]/14 bg-[#EEF0EB] px-3 py-3 text-xs font-bold uppercase tracking-[0.14em] text-[#284B63]">Stars</td>
-                    {comparisonHotels.map((hotel, index) => {
-                      const style = COMPARISON_COLUMN_STYLES[index % COMPARISON_COLUMN_STYLES.length];
-                      const isHighest = hotel.stars === maxComparisonStars;
-                      return (
-                        <td key={hotel.id} className={`border-b border-[#153243]/14 px-3 py-3 ${isHighest ? "font-bold text-[#153243]" : "font-medium text-[#153243]"} ${style.cell}`}>{"★".repeat(hotel.stars)}</td>
-                      );
-                    })}
-                  </tr>
-                  <tr>
-                    <td className="border-b border-[#153243]/14 bg-[#EEF0EB] px-3 py-3 text-xs font-bold uppercase tracking-[0.14em] text-[#284B63]">Services</td>
-                    {comparisonHotels.map((hotel, index) => {
-                      const style = COMPARISON_COLUMN_STYLES[index % COMPARISON_COLUMN_STYLES.length];
-                      return (
-                        <td key={hotel.id} className={`border-b border-[#153243]/14 px-3 py-3 font-medium text-[#153243] ${style.cell}`}>{hotel.services.join(", ")}</td>
-                      );
-                    })}
-                  </tr>
-                  <tr>
-                    <td className="bg-[#EEF0EB] px-3 py-3 text-xs font-bold uppercase tracking-[0.14em] text-[#284B63]">Exclusive Features</td>
-                    {comparisonHotels.map((hotel, index) => {
-                      const style = COMPARISON_COLUMN_STYLES[index % COMPARISON_COLUMN_STYLES.length];
-                      return (
-                        <td key={hotel.id} className={`px-3 py-3 font-medium text-[#153243] ${style.cell}`}>{hotel.exclusiveFeatures.join(", ")}</td>
-                      );
-                    })}
-                  </tr>
+                  {[
+                    { label: "Ubicación", fn: (h: Hotel) => h.location },
+                    { label: "Precio/noche", fn: (h: Hotel) => `$${h.price.toFixed(0)}`, highlight: (h: Hotel) => h.price === maxComparisonPrice },
+                    { label: "Experiencia", fn: (h: Hotel) => EXPERIENCE_LABELS[h.experienceType] },
+                    { label: "Estrellas", fn: (h: Hotel) => "★".repeat(h.stars), highlight: (h: Hotel) => h.stars === maxComparisonStars },
+                    { label: "Servicios", fn: (h: Hotel) => h.services.join(", ") },
+                    { label: "Exclusivo", fn: (h: Hotel) => h.exclusiveFeatures.join(", ") },
+                  ].map((row, ri) => (
+                    <tr key={row.label} className={ri % 2 === 0 ? "bg-white" : "bg-[#FAF6F0]"}>
+                      <td className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-[#0B1F2D]/40">{row.label}</td>
+                      {comparisonHotels.map((h) => (
+                        <td key={h.id} className={`px-4 py-3 font-medium ${row.highlight?.(h) ? "text-[#C9A87C] font-bold" : "text-[#0B1F2D]"}`}>
+                          {row.fn(h)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           </section>
         )}
 
-        <section className="panel rounded-[1.5rem] p-5 md:p-7">
+        {/* Filtros */}
+        <section className="bg-white rounded-3xl border border-[#0B1F2D]/10 p-6 md:p-8 mb-8 shadow-sm">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-[0.14em] text-[#284B63]">Location</label>
-              <input
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Santiago, Valparaiso, Pucon"
-                className="field w-full rounded-2xl px-3 py-2.5 text-sm"
-              />
+              <label className={labelClass}>Ubicación</label>
+              <input value={location} onChange={(e) => setLocation(e.target.value)}
+                placeholder="Santiago, Pucón, Atacama..." className={inputClass} />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-[0.14em] text-[#284B63]">Experience</label>
-              <select
-                value={experienceType}
-                onChange={(e) => setExperienceType(e.target.value)}
-                className="field w-full rounded-2xl px-3 py-2.5 text-sm"
-              >
-                <option value="">Any</option>
-                {Object.entries(EXPERIENCE_LABELS).map(([key, label]) => (
-                  <option key={key} value={key}>
-                    {label}
-                  </option>
+              <label className={labelClass}>Experiencia</label>
+              <select value={experienceType} onChange={(e) => setExperienceType(e.target.value)} className={inputClass}>
+                <option value="">Todas</option>
+                {Object.entries(EXPERIENCE_LABELS).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-[0.14em] text-[#284B63]">Min Price</label>
-              <input
-                type="number"
-                min={0}
-                value={minPrice}
-                onChange={(e) => setMinPrice(e.target.value)}
-                className="field w-full rounded-2xl px-3 py-2.5 text-sm"
-              />
+              <label className={labelClass}>Precio mín.</label>
+              <input type="number" min={0} value={minPrice} onChange={(e) => setMinPrice(e.target.value)} className={inputClass} />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-[0.14em] text-[#284B63]">Max Price</label>
-              <input
-                type="number"
-                min={0}
-                value={maxPrice}
-                onChange={(e) => setMaxPrice(e.target.value)}
-                className="field w-full rounded-2xl px-3 py-2.5 text-sm"
-              />
+              <label className={labelClass}>Precio máx.</label>
+              <input type="number" min={0} value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} className={inputClass} />
             </div>
           </div>
 
           <div className="mt-5">
-            <p className="mb-2.5 text-xs font-bold uppercase tracking-[0.14em] text-[#284B63]">Services</p>
+            <p className={labelClass}>Servicios</p>
             <div className="flex flex-wrap gap-2">
-              {SERVICES.map((service) => {
-                const active = services.includes(service);
+              {SERVICES.map((s) => {
+                const active = services.includes(s);
                 return (
-                  <button
-                    key={service}
-                    type="button"
-                    onClick={() => toggleService(service)}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                      active
-                        ? "border-2 border-[#153243] bg-[#284B63] text-[#F4F9E9]"
-                        : "border-[#153243]/25 bg-[#EEF0EB] text-[#153243] hover:bg-[#F4F9E9]"
-                    }`}
-                  >
-                    {service}
+                  <button key={s} type="button" onClick={() => toggleService(s)}
+                    className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all border ${active
+                      ? "bg-[#0B1F2D] text-[#FAF6F0] border-[#0B1F2D]"
+                      : "bg-white text-[#0B1F2D] border-[#0B1F2D]/15 hover:border-[#C9A87C] hover:text-[#C9A87C]"
+                      }`}>
+                    {s}
                   </button>
                 );
               })}
@@ -365,191 +218,137 @@ export default function HotelsPage() {
           </div>
 
           <div className="mt-6 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={filterHotels}
-              disabled={loading}
-              className="rounded-full border-2 border-[#153243] bg-[#284B63] px-5 py-2.5 text-sm font-semibold text-[#F4F9E9] transition hover:bg-[#153243]"
-            >
-              {loading ? "Loading..." : "Apply Filters"}
+            <button type="button" onClick={() => fetchHotels()} disabled={loading}
+              className="bg-[#0B1F2D] hover:bg-[#1B4965] text-[#FAF6F0] text-sm font-semibold px-6 py-2.5 rounded-full transition-colors">
+              {loading ? "Buscando..." : "Aplicar filtros"}
             </button>
-            <button
-              type="button"
+            <button type="button"
               onClick={async () => {
-                const resetLocation = "";
-                const resetExperienceType = "";
-                const resetMinPrice = "0";
-                const resetMaxPrice = "999999";
-                const resetServices: string[] = [];
-
-                setLocation(resetLocation);
-                setExperienceType(resetExperienceType);
-                setMinPrice(resetMinPrice);
-                setMaxPrice(resetMaxPrice);
-                setServices(resetServices);
-                setSelectedIds([]);
-                setComparisonHotels([]);
-                setError("");
-
-                await fetchHotels({
-                  location: resetLocation,
-                  experienceType: resetExperienceType,
-                  minPrice: resetMinPrice,
-                  maxPrice: resetMaxPrice,
-                  services: resetServices,
-                });
+                setLocation(""); setExperienceType(""); setMinPrice("0"); setMaxPrice("999999");
+                setServices([]); setSelectedIds([]); setComparisonHotels([]); setError("");
+                await fetchHotels({ location: "", experienceType: "", minPrice: "0", maxPrice: "999999", services: [] });
               }}
-              className="rounded-full border-2 border-[#153243] bg-[#EEF0EB] px-5 py-2.5 text-sm font-semibold text-[#153243] transition hover:bg-[#F4F9E9]"
-            >
-              Clear
+              className="bg-white border border-[#0B1F2D]/15 text-[#0B1F2D] text-sm font-semibold px-6 py-2.5 rounded-full hover:border-[#0B1F2D]/30 transition-colors">
+              Limpiar
             </button>
           </div>
 
-          {error && <p className="mt-4 rounded-2xl border border-[#153243]/25 bg-[#B4B8AB]/25 px-3 py-2 text-sm text-[#153243]">{error}</p>}
+          {error && (
+            <p className="mt-4 rounded-2xl bg-rose-50 border border-rose-200 px-4 py-2.5 text-sm text-rose-600">{error}</p>
+          )}
         </section>
 
-        <div className="mt-7 mb-3 flex justify-center">
-          <button
-            type="button"
-            onClick={runComparison}
+        {/* Botón comparar + seleccionados */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+          <div className="flex flex-wrap gap-2 items-center">
+            {selectedHotels.length > 0 ? (
+              <>
+                <span className="text-xs text-[#0B1F2D]/40 uppercase tracking-wider">Seleccionados:</span>
+                {selectedHotels.map((h) => (
+                  <span key={h.id} className="rounded-full bg-[#0B1F2D] text-[#FAF6F0] text-xs font-medium px-3 py-1">
+                    {h.name}
+                  </span>
+                ))}
+              </>
+            ) : (
+              <p className="text-sm text-[#0B1F2D]/40">Haz clic en un hotel para compararlo</p>
+            )}
+          </div>
+          <button type="button" onClick={runComparison}
             disabled={selectedIds.length < 2 || comparing}
-            className={`rounded-full px-7 py-3 text-sm font-semibold transition-all duration-300 ${
-              selectedIds.length >= 2
-                ? "border-2 border-[#153243] bg-[#284B63] text-[#F4F9E9] shadow-[0_0_0_1px_rgba(21,50,67,0.2),0_12px_28px_rgba(21,50,67,0.18)] hover:bg-[#153243]"
-                : "border-2 border-[#153243]/20 bg-[#EEF0EB] text-[#284B63]/70"
-            }`}
-          >
-            {comparing ? "Comparing..." : `Compare Selected (${selectedIds.length})`}
+            className={`rounded-full px-7 py-2.5 text-sm font-semibold transition-all ${selectedIds.length >= 2
+              ? "bg-[#C9A87C] hover:bg-[#E8845A] text-[#0B1F2D] shadow-lg shadow-[#C9A87C]/30"
+              : "bg-[#0B1F2D]/5 text-[#0B1F2D]/30 cursor-not-allowed"
+              }`}>
+            {comparing ? "Comparando..." : `Comparar (${selectedIds.length})`}
           </button>
         </div>
 
-        <div className="mb-6 rounded-2xl border border-[#153243]/16 bg-[#EEF0EB] px-4 py-3.5">
-          <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#284B63]">Selected Hotels</p>
-          {selectedHotels.length > 0 ? (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {selectedHotels.map((hotel) => (
-                <span key={hotel.id} className="rounded-full border border-[#153243]/20 bg-[#F4F9E9] px-3 py-1 text-xs font-medium text-[#153243]">
-                  {hotel.name}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-1 text-sm text-[#284B63]/80">Aun no has seleccionado hoteles.</p>
-          )}
-        </div>
-
-        <section className="mt-8">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="font-display text-2xl md:text-3xl font-semibold text-[#153243]">Results ({filteredHotels.length})</h2>
-            <div className="flex items-center gap-2">
-              <span className="rounded-full border border-[#153243]/20 bg-[#EEF0EB] px-3 py-1 text-xs font-semibold text-[#153243]">
-                Selected: {selectedHotels.length}
-              </span>
-              <p className="text-xs uppercase tracking-[0.25em] text-[#284B63]/75">Ready mode</p>
-            </div>
-          </div>
+        {/* Resultados */}
+        <section>
+          <h2 className="font-display text-2xl font-bold text-[#0B1F2D] mb-6">
+            Resultados <span className="text-[#0B1F2D]/30 font-normal text-lg">({filteredHotels.length})</span>
+          </h2>
 
           {filteredHotels.length === 0 ? (
-            <div className="panel rounded-3xl p-10 text-center text-[#284B63]">
-              No hotels found with the current filters.
+            <div className="rounded-3xl bg-white border border-[#0B1F2D]/8 p-16 text-center">
+              <p className="font-display text-2xl text-[#0B1F2D]/40">No se encontraron hoteles</p>
+              <p className="text-sm text-[#0B1F2D]/30 mt-2">Prueba ajustando los filtros</p>
             </div>
           ) : (
-            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {filteredHotels.map((hotel) => {
                 const selected = selectedIds.includes(hotel.id);
                 return (
-                  <article
-                    key={hotel.id}
-                    className={`overflow-hidden rounded-3xl border transition ${
-                      selected
-                        ? "border-[#153243]/40 bg-[#D9E0D4] shadow-[0_16px_34px_rgba(21,50,67,0.18)]"
-                        : "border-[#153243]/16 bg-[#EEF0EB] hover:bg-[#DDE4D8] hover:border-[#153243]/34 hover:shadow-[0_10px_22px_rgba(21,50,67,0.14)]"
-                    }`}
-                  >
-                    <div
-                      onClick={() => toggleHotelForCompare(hotel.id)}
-                      className="aspect-[16/10] overflow-hidden bg-[#284B63]/10 cursor-pointer relative group"
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          toggleHotelForCompare(hotel.id);
-                        }
-                      }}
-                    >
-                      <img
-                        src={getHotelImage(hotel)}
-                        alt={hotel.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
+                  <article key={hotel.id}
+                    className={`overflow-hidden rounded-3xl border transition-all duration-300 ${selected
+                      ? "border-[#C9A87C] shadow-xl shadow-[#C9A87C]/15 bg-white"
+                      : "border-[#0B1F2D]/8 bg-white hover:border-[#0B1F2D]/20 hover:shadow-lg hover:shadow-[#0B1F2D]/5"
+                      }`}>
+
+                    {/* Imagen */}
+                    <div onClick={() => toggleHotelForCompare(hotel.id)}
+                      className="aspect-[16/10] overflow-hidden cursor-pointer relative group"
+                      role="button" tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleHotelForCompare(hotel.id); } }}>
+                      <img src={getHotelImage(hotel)} alt={hotel.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#0B1F2D]/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                      {/* Badge experiencia */}
+                      <div className="absolute top-3 left-3 bg-[#0B1F2D]/80 backdrop-blur-sm text-[#FAF6F0] text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full">
+                        {EXPERIENCE_LABELS[hotel.experienceType]}
+                      </div>
+
                       {selected && (
-                        <div className="absolute top-3 right-3 bg-[#284B63] text-[#F4F9E9] text-xs font-bold px-3 py-1 rounded-full">
-                          ✓ Selected
+                        <div className="absolute top-3 right-3 bg-[#C9A87C] text-[#0B1F2D] text-xs font-bold px-3 py-1 rounded-full">
+                          ✓ Seleccionado
                         </div>
                       )}
                     </div>
 
-                    <div
-                      className="p-5 cursor-pointer"
+                    {/* Info */}
+                    <div className="p-5 cursor-pointer"
                       onClick={() => toggleHotelForCompare(hotel.id)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          toggleHotelForCompare(hotel.id);
-                        }
-                      }}
-                    >
-                      <div className="mb-3 flex items-start justify-between gap-3">
+                      role="button" tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleHotelForCompare(hotel.id); } }}>
+
+                      <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="min-w-0 flex-1">
-                          <h3 className="font-display text-xl font-semibold text-[#153243] leading-tight line-clamp-2">{hotel.name}</h3>
-                          <p className="text-xs uppercase tracking-[0.14em] text-[#284B63]/80">{hotel.location}</p>
+                          <h3 className="font-display text-lg font-bold text-[#0B1F2D] leading-tight line-clamp-1">{hotel.name}</h3>
+                          <p className="text-xs text-[#0B1F2D]/40 uppercase tracking-wider mt-0.5">📍 {hotel.location}</p>
                         </div>
-                        <span
-                          className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-semibold ${
-                            selected
-                              ? "border border-[#153243] bg-[#284B63] text-[#F4F9E9]"
-                              : "border border-[#153243]/20 bg-[#EEF0EB] text-[#284B63]"
-                          }`}
-                        >
-                          {selected ? "Selected" : "Click to compare"}
-                        </span>
+                        <div className="flex gap-0.5 shrink-0">
+                          {[...Array(hotel.stars)].map((_, i) => (
+                            <span key={i} className="text-[#C9A87C] text-xs">★</span>
+                          ))}
+                        </div>
                       </div>
 
-                      <p className="line-clamp-3 text-sm text-[#284B63]/88 leading-7">{hotel.description}</p>
+                      <p className="text-sm text-[#0B1F2D]/55 leading-relaxed line-clamp-2 mb-4">{hotel.description}</p>
 
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <span className="rounded-full border border-[#153243] bg-[#284B63] px-2.5 py-1 text-xs font-semibold text-[#F4F9E9]">
-                          ${hotel.price.toFixed(0)} / night
-                        </span>
-                        <span className="rounded-full border border-[#153243]/18 bg-[#F4F9E9] px-2.5 py-1 text-xs font-semibold text-[#153243]">
-                          {EXPERIENCE_LABELS[hotel.experienceType]}
-                        </span>
-                        <span className="rounded-full border border-[#153243]/18 bg-[#F4F9E9] px-2.5 py-1 text-xs font-semibold text-[#153243]">
-                          {"★".repeat(hotel.stars)}
-                        </span>
-                      </div>
-
-                      <div className="mt-4">
-                        <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[#284B63]">Services</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {hotel.services.map((service) => (
-                            <span key={service} className="rounded-full border border-[#153243]/18 bg-[#EEF0EB] px-2 py-0.5 text-xs text-[#153243]">
-                              {service}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="font-display text-2xl font-bold text-[#0B1F2D]">${hotel.price.toFixed(0)}</span>
+                          <span className="text-xs text-[#0B1F2D]/40 ml-1">/ noche</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1 justify-end">
+                          {hotel.services.slice(0, 2).map((s) => (
+                            <span key={s} className="text-[10px] bg-[#FAF6F0] border border-[#0B1F2D]/8 text-[#0B1F2D]/60 px-2 py-0.5 rounded-full">
+                              {s}
                             </span>
                           ))}
+                          {hotel.services.length > 2 && (
+                            <span className="text-[10px] text-[#0B1F2D]/40">+{hotel.services.length - 2}</span>
+                          )}
                         </div>
                       </div>
                     </div>
 
-                    <div className="px-5 pb-5 pt-2 border-t border-[#153243]/15">
-                      <Link
-                        href={`/hotels/${hotel.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="block w-full text-center rounded-full border-2 border-[#153243] bg-[#284B63] hover:bg-[#153243] text-[#F4F9E9] text-xs font-bold py-2.5 transition-colors"
-                      >
+                    {/* Botón */}
+                    <div className="px-5 pb-5">
+                      <Link href={`/hotels/${hotel.id}`} onClick={(e) => e.stopPropagation()}
+                        className="block w-full text-center rounded-full bg-[#0B1F2D] hover:bg-[#1B4965] text-[#FAF6F0] text-xs font-bold py-3 transition-colors">
                         Ver detalle →
                       </Link>
                     </div>
@@ -560,16 +359,12 @@ export default function HotelsPage() {
           )}
         </section>
 
-        {/* ── Mapa general ──────────────────────────────────────── */}
-        {filteredHotels.filter(h => h.latitude && h.longitude).length > 0 && (
-          <section className="mt-10">
-            <h2 className="font-display text-2xl md:text-3xl font-semibold text-[#153243] mb-4">
-              Ubicaciones en el mapa
-            </h2>
-            <div className="rounded-3xl overflow-hidden border border-[#153243]/16">
-              <GoogleMapComponent
-                hotels={filteredHotels.filter(h => h.latitude && h.longitude) as any}
-              />
+        {/* Mapa */}
+        {filteredHotels.filter((h) => h.latitude && h.longitude).length > 0 && (
+          <section className="mt-12">
+            <h2 className="font-display text-2xl font-bold text-[#0B1F2D] mb-4">Ubicaciones</h2>
+            <div className="rounded-3xl overflow-hidden border border-[#0B1F2D]/8">
+              <GoogleMapComponent hotels={filteredHotels.filter((h) => h.latitude && h.longitude) as any} />
             </div>
           </section>
         )}

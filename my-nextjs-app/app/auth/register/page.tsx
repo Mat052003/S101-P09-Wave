@@ -10,10 +10,11 @@ const PASSWORD_POLICY = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+
+  const [name, setName]       = useState("");
+  const [email, setEmail]     = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError]     = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -22,116 +23,104 @@ export default function RegisterPage() {
     setError("");
 
     if (!PASSWORD_POLICY.test(password)) {
-      setError("La contraseña debe tener minimo 8 caracteres, mayuscula, minuscula, numero y simbolo.");
+      setError("La contraseña debe tener mínimo 8 caracteres, mayúscula, minúscula, número y símbolo.");
       return;
     }
 
     setLoading(true);
-
-    const res = await fetch("/api/auth/register", {
+    const res  = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, email, password }),
     });
-
     const data = await res.json();
     setLoading(false);
 
-    if (!res.ok) {
-      setError(data.error || "Error al registrarse");
-      return;
-    }
+    if (!res.ok) { setError(data.error || "Error al registrarse"); return; }
 
     setSuccess(true);
     setTimeout(() => router.push("/auth/login"), 2000);
   }
 
+  const inputClass = "w-full bg-white border-2 border-[#0B1F2D]/12 rounded-2xl px-4 py-3 text-sm text-[#0B1F2D] placeholder-[#0B1F2D]/30 outline-none focus:border-[#C9A87C] focus:ring-4 focus:ring-[#C9A87C]/15 transition-all";
+  const labelClass = "block text-[10px] font-bold uppercase tracking-[0.2em] text-[#0B1F2D]/50 mb-1.5";
+
   return (
-    <div className="min-h-screen relative overflow-hidden text-[#153243]">
-      <div className="absolute inset-0 hero-grid opacity-35" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(180,184,171,0.38),_transparent_32%),radial-gradient(circle_at_top_right,_rgba(40,75,99,0.12),_transparent_28%),linear-gradient(180deg,_#eef0eb,_#f4f9e9)]" />
+    <div className="min-h-screen relative overflow-hidden flex items-center justify-center">
 
-      <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-10">
-        <div className="w-full max-w-md">
-          <section className="panel rounded-[2rem] p-6 md:p-8">
-            <div className="mb-8">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#284B63] text-center">Register</p>
-              <h2 className="mt-2 text-3xl font-black text-[#153243] text-center">wave<span className="text-[#284B63]">.</span></h2>
-              <p className="mt-2 text-sm text-[#284B63]/80 text-center">Crea tu cuenta gratis</p>
-            </div>
+      {/* Fondo */}
+      <div className="absolute inset-0">
+        <img
+          src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=2400&q=90"
+          alt="Fondo"
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-[#0B1F2D]/60 backdrop-blur-[2px]" />
+      </div>
 
-            {success ? (
-              <div className="rounded-3xl border border-[#153243]/25 bg-[#EEF0EB] p-8 text-center">
-                <p className="font-semibold text-[#153243]">Cuenta creada</p>
-                <p className="text-sm text-[#284B63]/80 mt-1">Redirigiendo al login...</p>
+      <div className="relative z-10 w-full max-w-md px-4 py-10">
+        <div className="bg-[#FAF6F0]/97 backdrop-blur-xl rounded-3xl shadow-2xl shadow-[#0B1F2D]/40 p-8 border border-white/30">
+
+          {/* Header */}
+          <div className="text-center mb-7">
+            <Link href="/" className="inline-flex items-center gap-2 mb-5">
+              <div className="w-9 h-9 bg-[#0B1F2D] rounded-xl flex items-center justify-center">
+                <span className="text-[#FAF6F0] text-sm font-black font-display italic">W</span>
               </div>
-            ) : (
-              <form onSubmit={handleRegister} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-[#284B63] mb-1.5 uppercase tracking-wider">
-                    Nombre completo
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Juan Pérez"
-                    required
-                    className="field w-full rounded-2xl px-4 py-3 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#284B63] mb-1.5 uppercase tracking-wider">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="tu@email.com"
-                    required
-                    className="field w-full rounded-2xl px-4 py-3 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#284B63] mb-1.5 uppercase tracking-wider">
-                    Contraseña
-                  </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Minimo 8, A-Z, a-z, 0-9 y simbolo"
-                    minLength={8}
-                    required
-                    className="field w-full rounded-2xl px-4 py-3 text-sm"
-                  />
-                  <p className="mt-1 text-[11px] text-[#284B63]/80">
-                    Debe incluir mayuscula, minuscula, numero y simbolo.
-                  </p>
-                </div>
+              <span className="font-display text-xl font-bold text-[#0B1F2D]">
+                Wave<span className="text-[#C9A87C]">.</span>
+              </span>
+            </Link>
+            <h1 className="font-display text-3xl font-bold text-[#0B1F2D]">Crea tu cuenta</h1>
+            <p className="text-sm text-[#0B1F2D]/55 mt-2">Únete gratis y empieza a explorar</p>
+          </div>
 
-                {error && (
-                  <p className="rounded-2xl border border-[#153243]/25 bg-[#B4B8AB]/25 px-3 py-2 text-xs text-[#153243]">{error}</p>
-                )}
+          {success ? (
+            <div className="bg-teal-50 border border-teal-200 rounded-2xl p-8 text-center">
+              <div className="text-4xl mb-3">✅</div>
+              <p className="font-bold text-teal-700">¡Cuenta creada!</p>
+              <p className="text-sm text-teal-600/80 mt-1">Redirigiendo al login...</p>
+            </div>
+          ) : (
+            <form onSubmit={handleRegister} className="space-y-4">
+              <div>
+                <label className={labelClass}>Nombre completo</label>
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)}
+                  placeholder="Juan Pérez" required className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Email</label>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                  placeholder="tu@email.com" required className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Contraseña</label>
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Mínimo 8 caracteres..." minLength={8} required className={inputClass} />
+                <p className="mt-1.5 text-[10px] text-[#0B1F2D]/40 leading-relaxed">
+                  Debe incluir mayúscula, minúscula, número y símbolo.
+                </p>
+              </div>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full rounded-2xl border-2 border-[#153243] bg-[#284B63] px-4 py-3 text-sm font-bold text-[#F4F9E9] transition hover:bg-[#153243] disabled:opacity-50"
-                >
-                  {loading ? "Creando cuenta..." : "Crear cuenta →"}
-                </button>
-              </form>
-            )}
+              {error && (
+                <div className="bg-rose-50 border border-rose-200 rounded-xl px-4 py-2.5">
+                  <p className="text-xs text-rose-600">{error}</p>
+                </div>
+              )}
 
-            <p className="text-center text-sm text-[#284B63]/80 mt-6">
-              ¿Ya tienes cuenta?{" "}
-              <Link href="/auth/login" className="font-semibold text-[#153243] hover:text-[#284B63] transition-colors">
-                Iniciar sesión
-              </Link>
-            </p>
-          </section>
+              <button type="submit" disabled={loading}
+                className="w-full bg-[#0B1F2D] hover:bg-[#1B4965] disabled:bg-[#0B1F2D]/40 text-[#FAF6F0] font-bold py-3.5 rounded-2xl transition-colors text-sm mt-2">
+                {loading ? "Creando cuenta..." : "Crear cuenta →"}
+              </button>
+            </form>
+          )}
+
+          <p className="text-center text-sm text-[#0B1F2D]/50 mt-6">
+            ¿Ya tienes cuenta?{" "}
+            <Link href="/auth/login" className="font-bold text-[#0B1F2D] hover:text-[#C9A87C] transition-colors">
+              Iniciar sesión
+            </Link>
+          </p>
         </div>
       </div>
     </div>

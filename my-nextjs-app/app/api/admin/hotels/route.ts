@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
-// ── GET: listar hoteles del anfitrión ───────────────────────────
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
@@ -24,7 +23,6 @@ export async function GET() {
   return NextResponse.json(hotels);
 }
 
-// ── POST: crear hotel ────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -40,8 +38,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const {
       name, description, location, experienceType,
-      price, extraBedPrice, stars,
+      price, extraBedPrice, totalRooms, isActive, stars,
       services, exclusiveFeatures, images,
+      latitude, longitude, address,
     } = body;
 
     if (!name || !description || !location || !price) {
@@ -54,13 +53,18 @@ export async function POST(req: NextRequest) {
         description,
         location,
         experienceType: experienceType || "RELAX",
-        price: Number(price),
+        price:         Number(price),
         extraBedPrice: Number(extraBedPrice) || 50,
-        stars: Number(stars) || 5,
-        services: services || [],
+        totalRooms:    Number(totalRooms) || 10,
+        isActive:      isActive ?? true,
+        stars:         Number(stars) || 5,
+        services:          services || [],
         exclusiveFeatures: exclusiveFeatures || [],
-        images: images || [],
-        ownerId: session.user.id,
+        images:            images || [],
+        latitude:  latitude  ? Number(latitude)  : null,
+        longitude: longitude ? Number(longitude) : null,
+        address:   address   || null,
+        ownerId:   session.user.id,
       },
     });
 
