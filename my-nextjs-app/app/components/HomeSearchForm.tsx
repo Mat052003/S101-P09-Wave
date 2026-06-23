@@ -2,11 +2,13 @@
 // app/components/HomeSearchForm.tsx
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import LocationAutocomplete from "./LocationAutocomplete";
+import { useTranslations } from "next-intl";
 
 export default function HomeSearchForm() {
   const router = useRouter();
+  const t = useTranslations("searchForm");
 
   const [location, setLocation] = useState("");
   const [checkIn, setCheckIn]   = useState("");
@@ -39,9 +41,7 @@ export default function HomeSearchForm() {
         <p className="text-[#C9A87C] text-[9px] font-semibold uppercase tracking-[0.35em] mb-1.5">
           Boutique Hotels · Chile
         </p>
-        <h2 className="font-display text-2xl font-bold text-[#0B1F2D] leading-tight">
-          Encuentra tu
-          <span className="italic text-[#1B4965]"> estadía perfecta</span>
+        <h2 className="font-display text-2xl font-bold text-[#0B1F2D] leading-tight" dangerouslySetInnerHTML={{ __html: t.raw("title") }}>
         </h2>
       </div>
 
@@ -56,12 +56,12 @@ export default function HomeSearchForm() {
         {/* Fechas */}
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className={labelClass}>Llegada</label>
+            <label className={labelClass}>{t("checkIn")}</label>
             <input type="date" value={checkIn} min={today}
               onChange={(e) => setCheckIn(e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>Salida</label>
+            <label className={labelClass}>{t("checkOut")}</label>
             <input type="date" value={checkOut} min={checkIn || today}
               onChange={(e) => setCheckOut(e.target.value)} className={inputClass} />
           </div>
@@ -70,13 +70,13 @@ export default function HomeSearchForm() {
         {/* Adultos / Niños */}
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className={labelClass}>Adultos</label>
+            <label className={labelClass}>{t("adults")}</label>
             <select value={adults} onChange={(e) => setAdults(Number(e.target.value))} className={inputClass}>
               {[1,2,3,4,5,6,7,8].map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
           <div>
-            <label className={labelClass}>Niños</label>
+            <label className={labelClass}>{t("children")}</label>
             <select value={children} onChange={(e) => setChildren(Number(e.target.value))} className={inputClass}>
               {[0,1,2,3,4].map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
@@ -85,17 +85,18 @@ export default function HomeSearchForm() {
 
         {/* Habitaciones */}
         <div>
-          <label className={labelClass}>Habitaciones</label>
+          <label className={labelClass}>{t("rooms")}</label>
           <select value={rooms} onChange={(e) => setRooms(Number(e.target.value))} className={inputClass}>
             {[1,2,3,4,5].map((n) => (
-              <option key={n} value={n}>{n} {n === 1 ? "habitación" : "habitaciones"}</option>
+              <option key={n} value={n}>{n} {n === 1 ? t("room_singular") : t("room_plural")}</option>
             ))}
           </select>
         </div>
 
+        {/* Botón Buscar */}
         <button type="submit"
           className="w-full bg-[#0B1F2D] hover:bg-[#1B4965] text-[#FAF6F0] font-bold py-3 rounded-2xl transition-colors text-sm tracking-wide mt-1">
-          Buscar hoteles →
+          {t("searchBtn")} →
         </button>
       </form>
     </div>
