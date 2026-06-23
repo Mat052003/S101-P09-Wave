@@ -25,6 +25,8 @@ model User {
   hotels        Hotel[]
   reviews       Review[]
   reviewReports ReviewReport[]
+  experiences   Experience[]
+  extraServices ExtraService[]
 }
 
 enum Role {
@@ -82,10 +84,8 @@ model Hotel {
   exclusiveFeatures String[]       @default([])
   images            String[]
   ownerId           String?
-  // ── Disponibilidad ─────────────────────────────────────
-  totalRooms        Int            @default(10)  // total habitaciones del hotel
-  isActive          Boolean        @default(true) // el anfitrión puede desactivar
-  // ── Ubicación para Google Maps ──────────────────────────
+  totalRooms        Int            @default(10)
+  isActive          Boolean        @default(true)
   latitude          Float?
   longitude         Float?
   address           String?
@@ -94,10 +94,12 @@ model Hotel {
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
-  owner             User?          @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  owner             User?               @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   reservations      Reservation[]
   reviews           Review[]
-  blockedDates      BlockedDate[]  // fechas bloqueadas manualmente por el anfitrión
+  blockedDates      BlockedDate[]
+  experiences       HotelExperience[]
+  extraServices     HotelExtraService[]
 }
 
 enum ExperienceType {
@@ -116,15 +118,15 @@ model Reservation {
   checkIn    DateTime
   checkOut   DateTime
   guests     Int               @default(1)
-  rooms      Int               @default(1) // habitaciones reservadas
+  rooms      Int               @default(1)
   totalPrice Float
   status     ReservationStatus @default(PENDING)
 
   extras     ReservationExtra[]
   review     Review?
 
-  createdAt  DateTime          @default(now())
-  updatedAt  DateTime          @updatedAt
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   hotel Hotel @relation(fields: [hotelId], references: [id], onDelete: Cascade)
@@ -154,11 +156,10 @@ enum ExtraType {
   TRANSPORT
 }
 
-// ── Fechas bloqueadas manualmente por el anfitrión ──────────
 model BlockedDate {
   id        String   @id @default(cuid())
   hotelId   String
-  date      DateTime // día bloqueado
+  date      DateTime
   reason    String?
   createdAt DateTime @default(now())
 
@@ -167,29 +168,24 @@ model BlockedDate {
   @@unique([hotelId, date])
 }
 
-// ── Reseñas ──────────────────────────────────────────────────
 model Review {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   hotelId       String
   userId        String
-  reservationId String   @unique
-
+  reservationId String    @unique
   rating        Int
   cleanliness   Int
   location      Int
   service       Int
   comment       String
-
   ownerReply    String?
   ownerReplyAt  DateTime?
-
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   hotel       Hotel       @relation(fields: [hotelId], references: [id], onDelete: Cascade)
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
-
   reports     ReviewReport[]
 }
 
@@ -202,4 +198,67 @@ model ReviewReport {
 
   review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ── EXPERIENCIAS ─────────────────────────────────────────────
+model Experience {
+  id          String             @id @default(cuid())
+  ownerId     String
+  name        String
+  description String
+  price       Float
+  duration    String?
+  category    ExperienceCategory @default(ACTIVITY)
+  images      String[]
+  isActive    Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  owner  User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  hotels HotelExperience[]
+}
+
+enum ExperienceCategory {
+  ACTIVITY
+  GASTRONOMY
+  TOUR
+  WELLNESS
+  ADVENTURE
+}
+
+model HotelExperience {
+  hotelId      String
+  experienceId String
+
+  hotel      Hotel      @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  experience Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+
+  @@id([hotelId, experienceId])
+}
+
+// ── EXTRAS ───────────────────────────────────────────────────
+model ExtraService {
+  id          String    @id @default(cuid())
+  ownerId     String
+  name        String
+  description String?
+  price       Float
+  image       String?
+  type        ExtraType
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  owner  User                @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  hotels HotelExtraService[]
+}
+
+model HotelExtraService {
+  hotelId        String
+  extraServiceId String
+
+  hotel        Hotel        @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  extraService ExtraService @relation(fields: [extraServiceId], references: [id], onDelete: Cascade)
+
+  @@id([hotelId, extraServiceId])
 }
