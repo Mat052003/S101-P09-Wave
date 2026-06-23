@@ -137,14 +137,20 @@ enum ReservationStatus {
 }
 
 model ReservationExtra {
-  id            String    @id @default(cuid())
-  reservationId String
-  type          ExtraType
-  price         Float
-  quantity      Int       @default(1)
-  notes         String?
+  id              String    @id @default(cuid())
+  reservationId   String
+  type            ExtraType?
+  price           Float
+  quantity        Int        @default(1)
+  notes           String?
+  // Referencias opcionales a entidades reales
+  extraServiceId  String?
+  experienceId    String?
+  name            String?    // nombre snapshot al momento de reservar
 
-  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  reservation   Reservation   @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  extraService  ExtraService? @relation(fields: [extraServiceId], references: [id], onDelete: SetNull)
+  experience    Experience?   @relation(fields: [experienceId], references: [id], onDelete: SetNull)
 }
 
 enum ExtraType {
@@ -214,6 +220,7 @@ model Experience {
 
   owner  User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   hotels HotelExperience[]
+  reservationExtras ReservationExtra[]
 }
 
 enum ExperienceCategory {
@@ -249,6 +256,7 @@ model ExtraService {
 
   owner  User                @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   hotels HotelExtraService[]
+  reservationExtras ReservationExtra[]
 }
 
 model HotelExtraService {
