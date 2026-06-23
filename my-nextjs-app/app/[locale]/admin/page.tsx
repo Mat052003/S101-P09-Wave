@@ -1,0 +1,168 @@
+"use client";
+// app/[locale]/admin/page.tsx
+
+export const dynamic = "force-dynamic";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
+
+type Hotel = {
+  id: string;
+  name: string;
+  location: string;
+  price: number;
+  stars: number;
+  images: string[];
+  _count: { reservations: number };
+};
+
+export default function AdminDashboard() {
+  const router = useRouter();
+  const [hotels, setHotels] = useState<Hotel[]>([]);
+  const [loading, setLoading] = useState(true);
+  const t = useTranslations("admin");
+
+  useEffect(() => {
+    fetch("/api/admin/hotels")
+      .then((r) => {
+        if (r.status === 401) { router.push("/auth/login"); return null; }
+        if (r.status === 403) { router.push("/dashboard"); return null; }
+        return r.json();
+      })
+      .then((data) => {
+        if (data) setHotels(data);
+        setLoading(false);
+      });
+  }, [router]);
+
+  async function deleteHotel(id: string) {
+    if (!confirm(t("deleteConfirm"))) return;
+    const res = await fetch(`/api/admin/hotels/${id}`, { method: "DELETE" });
+    if (res.ok) setHotels((prev) => prev.filter((h) => h.id !== id));
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <p className="text-stone-400">{t("loading")}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-stone-50">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-8">
+
+        <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-teal-600 mb-2">{t("hostPanel")}</p>
+            <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">{t("myHotels")}</h1>
+            <p className="text-stone-500 mt-2 text-sm">{t("subtitle")}</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/admin/reservations"
+              className="shrink-0 bg-white border border-stone-200 hover:border-teal-400 text-slate-700 text-sm font-bold px-5 py-3 rounded-xl transition-colors shadow-sm">
+              📋 Ver Todas las Reservas
+            </Link>
+            <Link href="/admin/hotels/new"
+              className="shrink-0 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold px-5 py-3 rounded-xl transition-colors shadow-sm">
+              {t("addHotel")}
+            </Link>
+          </div>
+        </header>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-white rounded-2xl border border-stone-100 p-6">
+            <p className="text-3xl font-black text-slate-900">{hotels.length}</p>
+            <p className="text-xs text-stone-400 uppercase tracking-wider mt-1">{t("publishedHotels")}</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-stone-100 p-6">
+            <p className="text-3xl font-black text-slate-900">
+              {hotels.reduce((sum, h) => sum + h._count.reservations, 0)}
+            </p>
+            <p className="text-xs text-stone-400 uppercase tracking-wider mt-1">{t("totalReservations")}</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-stone-100 p-6">
+            <p className="text-3xl font-black text-slate-900">
+              {hotels.length > 0 ? `$${Math.round(hotels.reduce((sum, h) => sum + h.price, 0) / hotels.length).toLocaleString()}` : "$0"}
+            </p>
+            <p className="text-xs text-stone-400 uppercase tracking-wider mt-1">{t("avgPrice")}</p>
+          </div>
+        </div>
+
+        {/* Hotel list */}
+        {hotels.length === 0 ? (
+          <div className="bg-white rounded-3xl border border-stone-100 p-12 sm:p-16 text-center">
+            <div className="w-20 h-20 bg-teal-50 rounded-2xl flex items-center justify-center text-4xl mx-auto mb-4">🏨</div>
+            <h2 className="text-xl font-bold text-slate-900">{t("noHotels")}</h2>
+            <p className="text-stone-500 text-sm mt-2 max-w-sm mx-auto">{t("noHotelsDesc")}</p>
+            <Link href="/admin/hotels/new"
+              className="inline-block mt-6 bg-slate-900 hover:bg-teal-600 text-white text-sm font-bold px-6 py-3 rounded-xl transition-colors">
+              {t("addFirst")}
+            </Link>
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 gap-6">
+            {hotels.map((hotel) => (
+              <article key={hotel.id} className="bg-white rounded-2xl border border-stone-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                <div className="aspect-[16/9] bg-stone-100 relative">
+                  {hotel.images?.[0] ? (
+                    <img src={hotel.images[0]} alt={hotel.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-stone-300 text-4xl">🏨</div>
+                  )}
+                </div>
+
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-slate-900 truncate">{hotel.name}</h3>
+                      <p className="text-xs text-stone-400">📍 {hotel.location}</p>
+                    </div>
+                    <div className="flex gap-0.5 shrink-0">
+                      {[...Array(hotel.stars)].map((_, i) => (
+                        <span key={i} className="text-amber-400 text-xs">★</span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-stone-100">
+                    <div>
+                      <span className="text-xl font-black text-slate-900">${hotel.price.toLocaleString()}</span>
+                      <span className="text-xs text-stone-400"> {t("perNight")}</span>
+                    </div>
+                    <span className="text-xs text-stone-500 bg-stone-50 px-2 py-1 rounded-full">
+                      {hotel._count.reservations} {t("reservations")}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    <Link href={`/admin/hotels/${hotel.id}/edit`}
+                      className="flex-1 text-center bg-slate-900 hover:bg-teal-600 text-white text-xs font-bold py-2.5 rounded-xl transition-colors">
+                      {t("edit")}
+                    </Link>
+                    <Link href={`/admin/hotels/${hotel.id}/reservations`}
+                      className="flex-1 text-center bg-white border border-stone-200 hover:border-teal-400 text-slate-700 text-xs font-bold py-2.5 rounded-xl transition-colors">
+                      {t("viewReservations")}
+                    </Link>
+                    <Link href={`/hotels/${hotel.id}`}
+                      className="flex-1 text-center bg-white border border-stone-200 hover:border-stone-400 text-slate-700 text-xs font-bold py-2.5 rounded-xl transition-colors">
+                      {t("viewPublic")}
+                    </Link>
+                    <button onClick={() => deleteHotel(hotel.id)}
+                      className="px-3 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-xl transition-colors">
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

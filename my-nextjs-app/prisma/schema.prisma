@@ -89,6 +89,8 @@ model Hotel {
   latitude          Float?
   longitude         Float?
   address           String?
+  googlePlaceId     String?
+
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 

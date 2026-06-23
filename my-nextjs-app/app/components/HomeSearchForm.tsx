@@ -2,11 +2,13 @@
 // app/components/HomeSearchForm.tsx
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import LocationAutocomplete from "./LocationAutocomplete";
+import { useTranslations } from "next-intl";
 
 export default function HomeSearchForm() {
   const router = useRouter();
+  const t = useTranslations("searchForm");
   const [location, setLocation]     = useState("");
   const [checkIn, setCheckIn]       = useState("");
   const [checkOut, setCheckOut]     = useState("");
@@ -34,14 +36,11 @@ export default function HomeSearchForm() {
     <div className="bg-[#F4F9E9] rounded-3xl shadow-2xl p-7 md:p-9 max-w-md w-full">
 
       <div className="mb-6">
-        <h2 className="font-display text-3xl md:text-4xl font-semibold text-[#153243] leading-tight tracking-tight">
-          Encuentra lugares para
-          <br />
-          tu estadía en <span className="italic">Wave</span>
-          <span className="text-[#284B63]">.</span>
+        <h2 className="font-display text-3xl md:text-4xl font-semibold text-[#153243] leading-tight tracking-tight"
+            dangerouslySetInnerHTML={{ __html: t.raw("title") }}>
         </h2>
         <p className="text-sm text-[#284B63]/85 mt-3 leading-relaxed">
-          Descubre hoteles boutique únicos seleccionados para experiencias inolvidables.
+          {t("subtitle")}
         </p>
       </div>
 
@@ -54,7 +53,7 @@ export default function HomeSearchForm() {
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-2xl border-2 border-[#153243]/15 bg-white px-4 py-3 hover:border-[#153243]/30 focus-within:border-[#153243] transition-colors">
             <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#284B63]">
-              Llegada
+              {t("checkIn")}
             </label>
             <input
               type="date"
@@ -66,7 +65,7 @@ export default function HomeSearchForm() {
           </div>
           <div className="rounded-2xl border-2 border-[#153243]/15 bg-white px-4 py-3 hover:border-[#153243]/30 focus-within:border-[#153243] transition-colors">
             <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#284B63]">
-              Salida
+              {t("checkOut")}
             </label>
             <input
               type="date"
@@ -82,7 +81,7 @@ export default function HomeSearchForm() {
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-2xl border-2 border-[#153243]/15 bg-white px-4 py-3 hover:border-[#153243]/30 focus-within:border-[#153243] transition-colors">
             <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#284B63]">
-              Adultos
+              {t("adults")}
             </label>
             <select
               value={adults}
@@ -96,7 +95,7 @@ export default function HomeSearchForm() {
           </div>
           <div className="rounded-2xl border-2 border-[#153243]/15 bg-white px-4 py-3 hover:border-[#153243]/30 focus-within:border-[#153243] transition-colors">
             <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#284B63]">
-              Niños
+              {t("children")}
             </label>
             <select
               value={children}
@@ -113,7 +112,7 @@ export default function HomeSearchForm() {
         {/* Habitaciones */}
         <div className="rounded-2xl border-2 border-[#153243]/15 bg-white px-4 py-3 hover:border-[#153243]/30 focus-within:border-[#153243] transition-colors">
           <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#284B63]">
-            Habitaciones
+            {t("rooms")}
           </label>
           <select
             value={rooms}
@@ -121,7 +120,7 @@ export default function HomeSearchForm() {
             className="w-full bg-transparent text-sm text-[#153243] outline-none mt-1 cursor-pointer"
           >
             {[1, 2, 3, 4, 5].map((n) => (
-              <option key={n} value={n}>{n} {n === 1 ? "habitación" : "habitaciones"}</option>
+              <option key={n} value={n}>{n} {n === 1 ? t("room_singular") : t("room_plural")}</option>
             ))}
           </select>
         </div>
@@ -131,7 +130,7 @@ export default function HomeSearchForm() {
           type="submit"
           className="w-full bg-[#153243] hover:bg-[#284B63] text-[#F4F9E9] font-bold py-4 rounded-2xl transition-colors text-base shadow-lg mt-2"
         >
-          Buscar →
+          {t("searchBtn")} →
         </button>
       </form>
     </div>
