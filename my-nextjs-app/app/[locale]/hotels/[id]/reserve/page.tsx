@@ -3,235 +3,425 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Link, useRouter } from "@/i18n/navigation";
-import { useTranslations } from "next-intl";
+
+// ── Types ────────────────────────────────────────────────────────────────────
 
 type Hotel = {
   id: string;
   name: string;
   price: number;
+  extraBedPrice: number;
   totalRooms: number;
 };
 
-type ExtraOption = {
-  id: "BREAKFAST" | "SPA" | "TOUR" | "TRANSPORT";
-  price: number;
-  icon: string;
+type RoomType = {
+  id: string;
+  name: string;
+  capacity: number;
+  count: number;
+  pricePerNight: number;
+  maxExtraBeds: number;
+  extraBedPrice: number;
 };
 
-const EXTRA_OPTIONS: ExtraOption[] = [
-  { id: "BREAKFAST", price: 20, icon: "🍳" },
-  { id: "SPA", price: 80, icon: "💆‍♀️" },
-  { id: "TOUR", price: 50, icon: "🗺️" },
-  { id: "TRANSPORT", price: 40, icon: "🚐" },
-];
+// ── Shared style tokens ───────────────────────────────────────────────────────
+
+const FL = "w-full border border-[#0B1F2D]/20 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#C9A87C] focus:ring-4 focus:ring-[#C9A87C]/15 transition-all bg-white";
+
+// ── Step indicator ────────────────────────────────────────────────────────────
+
+function StepIndicator({ current }: { current: number }) {
+  const LABELS = ["Estadía", "Experiencias", "Confirmar"];
+  return (
+    <div className="flex items-center">
+      {LABELS.map((label, i) => {
+        const n     = i + 1;
+        const done  = n < current;
+        const active = n === current;
+        return (
+          <div key={n} className="flex items-center flex-1 last:flex-none">
+            <div className="flex items-center gap-2 shrink-0">
+              <div
+                className={`w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center transition-colors ${
+                  done   ? "bg-[#C9A87C] text-white" :
+                  active ? "bg-[#0B1F2D] text-white" :
+                           "bg-[#0B1F2D]/10 text-[#0B1F2D]/35"
+                }`}
+              >
+                {done ? "✓" : n}
+              </div>
+              <span
+                className={`text-xs font-semibold hidden sm:inline transition-colors ${
+                  active ? "text-[#0B1F2D]" : "text-[#0B1F2D]/35"
+                }`}
+              >
+                {label}
+              </span>
+            </div>
+            {i < LABELS.length - 1 && (
+              <div className={`flex-1 h-px mx-3 ${done ? "bg-[#C9A87C]" : "bg-[#0B1F2D]/10"}`} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Counter widget ────────────────────────────────────────────────────────────
+
+function Counter({
+  value, min, max, onChange,
+}: {
+  value: number; min: number; max?: number; onChange: (n: number) => void;
+}) {
+  const btn = "w-9 h-9 rounded-lg border border-[#0B1F2D]/20 font-bold text-base flex items-center justify-center hover:border-[#C9A87C] transition-colors disabled:opacity-30 disabled:cursor-not-allowed";
+  return (
+    <div className="flex items-center gap-3">
+      <button type="button" className={btn} disabled={value <= min} onClick={() => onChange(Math.max(min, value - 1))}>−</button>
+      <span className="text-lg font-bold text-[#0B1F2D] w-6 text-center tabular-nums">{value}</span>
+      <button type="button" className={btn} disabled={max !== undefined && value >= max} onClick={() => onChange(max !== undefined ? Math.min(max, value + 1) : value + 1)}>+</button>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ReservePage() {
-  const params = useParams();
-  const hotelId = params.id as string;
-  const router = useRouter();
-  const t = useTranslations("reserve");
+  const params  = useParams<{ id: string }>();
+  const hotelId = params.id;
+  const router  = useRouter(); // available for steps 2 & 3
 
-  const [hotel, setHotel] = useState<Hotel | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [step, setStep] = useState(1);
 
-  const [checkIn, setCheckIn] = useState("");
-  const [checkOut, setCheckOut] = useState("");
-  const [guests, setGuests] = useState(2);
-  const [rooms, setRooms] = useState(1);
-  const [selectedExtras, setSelectedExtras] = useState<Set<string>>(new Set());
+  // Remote data
+  const [hotel, setHotel]         = useState<Hotel | null>(null);
+  const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [loadError, setLoadError] = useState("");
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Step 1 form state
+  const [checkIn, setCheckIn]                   = useState("");
+  const [checkOut, setCheckOut]                 = useState("");
+  const [adults, setAdults]                     = useState(2);
+  const [children, setChildren]                 = useState(0);
+  const [rooms, setRooms]                       = useState(1);
+  const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string | null>(null);
+  const [extraBeds, setExtraBeds]               = useState(0);
 
+  const today = new Date().toISOString().split("T")[0];
+
+  // ── Fetch hotel + roomTypes ─────────────────────────────────────────────────
   useEffect(() => {
-    fetch(`/api/hotels/${hotelId}`)
-      .then((r) => r.json())
-      .then((data) => {
-        setHotel(data);
+    async function load() {
+      try {
+        const [hotelRes, extrasRes] = await Promise.all([
+          fetch(`/api/hotels/${hotelId}`),
+          fetch(`/api/hotels/${hotelId}/experiences-extras`),
+        ]);
+
+        const hotelData  = await hotelRes.json();
+        const extrasData = extrasRes.ok ? await extrasRes.json() : {};
+
+        if (!hotelRes.ok) {
+          setLoadError(hotelData.error || "Hotel no encontrado");
+          setLoading(false);
+          return;
+        }
+
+        setHotel(hotelData);
+
+        // Use roomTypes if the endpoint returns them (field may be added later)
+        if (Array.isArray(extrasData.roomTypes) && extrasData.roomTypes.length > 0) {
+          setRoomTypes(extrasData.roomTypes);
+          setSelectedRoomTypeId(extrasData.roomTypes[0].id);
+        }
+      } catch {
+        setLoadError("Error de red al cargar el hotel");
+      } finally {
         setLoading(false);
-      })
-      .catch(() => {
-        setError(t("error"));
-        setLoading(false);
-      });
-  }, [hotelId, t]);
-
-  const handleToggleExtra = (id: string) => {
-    const newSet = new Set(selectedExtras);
-    if (newSet.has(id)) newSet.delete(id);
-    else newSet.add(id);
-    setSelectedExtras(newSet);
-  };
-
-  const calculateNights = () => {
-    if (!checkIn || !checkOut) return 0;
-    const inDate = new Date(checkIn);
-    const outDate = new Date(checkOut);
-    const diffTime = outDate.getTime() - inDate.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays > 0 ? diffDays : 0;
-  };
-
-  const nights = calculateNights();
-  const basePrice = hotel ? hotel.price * nights * rooms : 0;
-  
-  const extrasTotal = Array.from(selectedExtras).reduce((sum, id) => {
-    const option = EXTRA_OPTIONS.find(o => o.id === id);
-    return sum + (option ? option.price : 0);
-  }, 0);
-
-  const totalPrice = basePrice + extrasTotal;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (nights <= 0) {
-      setError(t("invalidDates"));
-      return;
-    }
-    setIsSubmitting(true);
-    setError("");
-
-    const extrasPayload = Array.from(selectedExtras).map(id => {
-      const option = EXTRA_OPTIONS.find(o => o.id === id);
-      return { type: id, price: option?.price || 0, quantity: 1 };
-    });
-
-    try {
-      const res = await fetch("/api/reservations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          hotelId,
-          checkIn,
-          checkOut,
-          guests,
-          rooms,
-          extras: extrasPayload
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || t("error"));
-        setIsSubmitting(false);
-        return;
       }
-
-      router.push("/dashboard");
-    } catch (err) {
-      setError(t("error"));
-      setIsSubmitting(false);
     }
-  };
+    load();
+  }, [hotelId]);
 
-  if (loading) return <div className="min-h-screen bg-[#EEF0EB] p-10 text-center">{t("processing")}</div>;
-  if (!hotel) return <div className="min-h-screen bg-[#EEF0EB] p-10 text-center text-red-500">{error}</div>;
+  // ── Derived price calculations ──────────────────────────────────────────────
+  const nights = (() => {
+    if (!checkIn || !checkOut) return 0;
+    const ms = new Date(checkOut).getTime() - new Date(checkIn).getTime();
+    const d  = Math.ceil(ms / 86_400_000);
+    return d > 0 ? d : 0;
+  })();
 
-  return (
-    <div className="min-h-screen bg-[#EEF0EB] text-[#153243] py-10 px-4 sm:px-6">
-      <div className="max-w-4xl mx-auto">
-        <Link href={`/hotels/${hotelId}`} className="text-[#284B63] font-semibold text-sm hover:underline mb-6 inline-block">
-          ← {hotel.name}
-        </Link>
+  const selectedRoom   = roomTypes.find((r) => r.id === selectedRoomTypeId) ?? null;
+  const pricePerNight  = selectedRoom ? selectedRoom.pricePerNight  : (hotel?.price ?? 0);
+  const xBedPrice      = selectedRoom ? selectedRoom.extraBedPrice  : (hotel?.extraBedPrice ?? 50);
+  const maxExtraBeds   = selectedRoom ? selectedRoom.maxExtraBeds   : 2;
+  const maxRooms       = selectedRoom ? selectedRoom.count          : (hotel?.totalRooms ?? 10);
 
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-8">{t("title")}</h1>
+  const roomsSubtotal  = pricePerNight * nights * rooms;
+  const bedsSubtotal   = extraBeds * xBedPrice * nights * rooms;
+  const grandTotal     = roomsSubtotal + bedsSubtotal;
 
-        <form onSubmit={handleSubmit} className="grid md:grid-cols-3 gap-8">
-          <div className="md:col-span-2 space-y-8">
-            
-            {/* Dates & Guests */}
-            <section className="bg-white p-6 sm:p-8 rounded-3xl border border-[#153243]/10 shadow-sm">
-              <h2 className="text-xl font-bold mb-6">Detalles de estadía</h2>
-              
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">{t("checkIn")}</label>
-                  <input type="date" required value={checkIn} onChange={(e) => setCheckIn(e.target.value)}
-                    className="w-full bg-[#EEF0EB] border-transparent rounded-xl px-4 py-3 focus:border-[#284B63] focus:ring-0" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">{t("checkOut")}</label>
-                  <input type="date" required value={checkOut} onChange={(e) => setCheckOut(e.target.value)}
-                    className="w-full bg-[#EEF0EB] border-transparent rounded-xl px-4 py-3 focus:border-[#284B63] focus:ring-0" />
-                </div>
-              </div>
+  const step1Valid = !!checkIn && !!checkOut && nights > 0 &&
+    (roomTypes.length === 0 || !!selectedRoomTypeId);
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">{t("guests")}</label>
-                  <input type="number" min="1" max="4" required value={guests} onChange={(e) => setGuests(Number(e.target.value))}
-                    className="w-full bg-[#EEF0EB] border-transparent rounded-xl px-4 py-3 focus:border-[#284B63] focus:ring-0" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">{t("rooms")}</label>
-                  <input type="number" min="1" max={hotel.totalRooms} required value={rooms} onChange={(e) => setRooms(Number(e.target.value))}
-                    className="w-full bg-[#EEF0EB] border-transparent rounded-xl px-4 py-3 focus:border-[#284B63] focus:ring-0" />
-                </div>
-              </div>
-            </section>
+  // ── Loading / error states ──────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#FAF6F0] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-[#C9A87C] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-[#0B1F2D]/50">Cargando hotel...</p>
+        </div>
+      </div>
+    );
+  }
 
-            {/* Extra Packages */}
-            <section className="bg-white p-6 sm:p-8 rounded-3xl border border-[#153243]/10 shadow-sm">
-              <h2 className="text-xl font-bold mb-2">{t("extraPackages")}</h2>
-              <p className="text-sm text-stone-500 mb-6">{t("selectExtras")}</p>
+  if (!hotel) {
+    return (
+      <div className="min-h-screen bg-[#FAF6F0] flex items-center justify-center">
+        <p className="text-rose-500 text-sm">{loadError || "Hotel no encontrado"}</p>
+      </div>
+    );
+  }
 
-              <div className="space-y-3">
-                {EXTRA_OPTIONS.map((opt) => (
-                  <label key={opt.id} className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-colors ${selectedExtras.has(opt.id) ? "border-[#284B63] bg-[#F4F9E9]" : "border-transparent bg-[#EEF0EB] hover:bg-stone-200"}`}>
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{opt.icon}</span>
-                      <span className="font-semibold text-slate-800">{t(`extra_${opt.id}`)}</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="font-bold text-[#284B63]">+${opt.price}</span>
-                      <input type="checkbox" checked={selectedExtras.has(opt.id)} onChange={() => handleToggleExtra(opt.id)} className="w-5 h-5 rounded text-[#284B63] focus:ring-[#284B63]" />
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </section>
-
-          </div>
-
-          {/* Sidebar Summary */}
-          <div className="md:col-span-1">
-            <div className="bg-[#284B63] text-white p-6 sm:p-8 rounded-3xl shadow-lg sticky top-8">
-              <h3 className="text-xl font-bold mb-6">{t("priceSummary")}</h3>
-              
-              <div className="space-y-4 mb-6 text-sm font-medium">
-                <div className="flex justify-between items-center opacity-80">
-                  <span>{hotel.price} x {nights} noches x {rooms} hab.</span>
-                  <span>${basePrice.toLocaleString()}</span>
-                </div>
-                {Array.from(selectedExtras).map(id => {
-                  const opt = EXTRA_OPTIONS.find(o => o.id === id);
-                  if (!opt) return null;
-                  return (
-                    <div key={id} className="flex justify-between items-center opacity-80">
-                      <span>{t(`extra_${id}`)}</span>
-                      <span>${opt.price.toLocaleString()}</span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="border-t border-white/20 pt-6 mb-8 flex justify-between items-end">
-                <span className="text-sm font-bold opacity-80">{t("total")}</span>
-                <span className="text-3xl font-black">${totalPrice.toLocaleString()}</span>
-              </div>
-
-              {error && <div className="bg-red-500/20 text-red-100 p-3 rounded-xl mb-4 text-sm">{error}</div>}
-
+  // ── Step 2 placeholder ──────────────────────────────────────────────────────
+  if (step === 2) {
+    return (
+      <div className="min-h-screen bg-[#FAF6F0]">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
+          <StepIndicator current={2} />
+          <div className="bg-white rounded-2xl border border-[#0B1F2D]/10 p-10 shadow-sm text-center">
+            <p className="text-[#0B1F2D]/40 text-sm mb-6">Paso 2 — Experiencias y extras (próximamente)</p>
+            <div className="flex justify-center gap-4">
               <button
-                type="submit"
-                disabled={isSubmitting || nights <= 0}
-                className="w-full bg-[#F4F9E9] text-[#153243] font-black text-lg py-4 rounded-xl shadow-md hover:bg-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => setStep(1)}
+                className="text-sm font-bold text-[#0B1F2D]/50 hover:text-[#0B1F2D] transition-colors"
               >
-                {isSubmitting ? t("processing") : t("confirm")}
+                ← Volver
+              </button>
+              <button
+                onClick={() => setStep(3)}
+                className="bg-[#C9A87C] text-white text-sm font-bold px-6 py-2.5 rounded-xl hover:bg-[#C9A87C]/80 transition-colors"
+              >
+                Continuar →
               </button>
             </div>
           </div>
-        </form>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Step 3 placeholder ──────────────────────────────────────────────────────
+  if (step === 3) {
+    return (
+      <div className="min-h-screen bg-[#FAF6F0]">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
+          <StepIndicator current={3} />
+          <div className="bg-white rounded-2xl border border-[#0B1F2D]/10 p-10 shadow-sm text-center">
+            <p className="text-[#0B1F2D]/40 text-sm mb-6">Paso 3 — Confirmación (próximamente)</p>
+            <button
+              onClick={() => setStep(2)}
+              className="text-sm font-bold text-[#0B1F2D]/50 hover:text-[#0B1F2D] transition-colors"
+            >
+              ← Volver
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Step 1 ──────────────────────────────────────────────────────────────────
+  return (
+    <div className="min-h-screen bg-[#FAF6F0]">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
+
+        <Link href={`/hotels/${hotelId}`} className="text-sm text-[#C9A87C] font-bold mb-6 inline-block">
+          ← {hotel.name}
+        </Link>
+
+        <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-[#C9A87C] mb-1">Reservar</p>
+        <h1 className="font-display text-3xl font-bold text-[#0B1F2D] mb-6">{hotel.name}</h1>
+
+        <StepIndicator current={1} />
+
+        <div className="mt-8 grid md:grid-cols-3 gap-6">
+
+          {/* ── Left column ───────────────────────────────────────────────── */}
+          <div className="md:col-span-2 space-y-4">
+
+            {/* Fechas */}
+            <div className="bg-white rounded-2xl border border-[#0B1F2D]/10 p-6 shadow-sm">
+              <h2 className="font-bold text-[#0B1F2D] mb-5">Fechas</h2>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#0B1F2D]/50 mb-2 uppercase tracking-wider">Check-in</label>
+                  <input
+                    type="date"
+                    min={today}
+                    value={checkIn}
+                    onChange={(e) => {
+                      setCheckIn(e.target.value);
+                      if (checkOut && e.target.value >= checkOut) setCheckOut("");
+                    }}
+                    className={FL}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#0B1F2D]/50 mb-2 uppercase tracking-wider">Check-out</label>
+                  <input
+                    type="date"
+                    min={checkIn || today}
+                    value={checkOut}
+                    onChange={(e) => setCheckOut(e.target.value)}
+                    className={FL}
+                  />
+                </div>
+              </div>
+              {nights > 0 && (
+                <p className="mt-3 text-xs text-[#C9A87C] font-semibold">
+                  {nights} noche{nights !== 1 ? "s" : ""}
+                </p>
+              )}
+            </div>
+
+            {/* Tipo de habitación — solo si el hotel tiene roomTypes */}
+            {roomTypes.length > 0 && (
+              <div className="bg-white rounded-2xl border border-[#0B1F2D]/10 p-6 shadow-sm">
+                <h2 className="font-bold text-[#0B1F2D] mb-4">Tipo de habitación</h2>
+                <div className="space-y-2">
+                  {roomTypes.map((rt) => (
+                    <label
+                      key={rt.id}
+                      className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                        selectedRoomTypeId === rt.id
+                          ? "border-[#C9A87C] bg-[#C9A87C]/5"
+                          : "border-[#0B1F2D]/8 hover:border-[#C9A87C]/40 bg-[#FAF6F0]/50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="roomType"
+                          value={rt.id}
+                          checked={selectedRoomTypeId === rt.id}
+                          onChange={() => { setSelectedRoomTypeId(rt.id); setExtraBeds(0); }}
+                          className="accent-[#C9A87C] w-4 h-4"
+                        />
+                        <div>
+                          <p className="font-semibold text-[#0B1F2D] text-sm">{rt.name}</p>
+                          <p className="text-xs text-[#0B1F2D]/40 mt-0.5">
+                            {rt.capacity} persona{rt.capacity !== 1 ? "s" : ""} · {rt.count} disponible{rt.count !== 1 ? "s" : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-bold text-[#0B1F2D]">
+                        ${rt.pricePerNight}
+                        <span className="font-normal text-[#0B1F2D]/40">/noche</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Huéspedes y habitaciones */}
+            <div className="bg-white rounded-2xl border border-[#0B1F2D]/10 p-6 shadow-sm">
+              <h2 className="font-bold text-[#0B1F2D] mb-5">Huéspedes y habitaciones</h2>
+              <div className="grid sm:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-xs font-bold text-[#0B1F2D]/50 mb-3 uppercase tracking-wider">Adultos</label>
+                  <Counter value={adults} min={1} onChange={setAdults} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#0B1F2D]/50 mb-3 uppercase tracking-wider">Niños</label>
+                  <Counter value={children} min={0} onChange={setChildren} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#0B1F2D]/50 mb-3 uppercase tracking-wider">Habitaciones</label>
+                  <Counter value={rooms} min={1} max={maxRooms} onChange={setRooms} />
+                  <p className="text-[10px] text-[#0B1F2D]/30 mt-1.5">Máx. {maxRooms}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Camas extra */}
+            {maxExtraBeds > 0 && (
+              <div className="bg-white rounded-2xl border border-[#0B1F2D]/10 p-6 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-bold text-[#0B1F2D]">Camas extra</h2>
+                    <p className="text-xs text-[#0B1F2D]/40 mt-0.5">
+                      +${xBedPrice} por cama · por noche · por habitación
+                    </p>
+                  </div>
+                  <Counter value={extraBeds} min={0} max={maxExtraBeds} onChange={setExtraBeds} />
+                </div>
+              </div>
+            )}
+
+          </div>
+
+          {/* ── Sidebar ───────────────────────────────────────────────────── */}
+          <div className="md:col-span-1">
+            <div className="bg-[#0B1F2D] text-white rounded-2xl p-6 shadow-lg sticky top-6">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-white/50 mb-5">Resumen de precio</h3>
+
+              <div className="space-y-3 text-sm mb-5 min-h-[3rem]">
+                {nights > 0 ? (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-white/60">
+                        ${pricePerNight} × {nights}n × {rooms} hab.
+                      </span>
+                      <span className="font-semibold">${roomsSubtotal.toLocaleString()}</span>
+                    </div>
+                    {extraBeds > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-white/60">
+                          {extraBeds} cama{extraBeds !== 1 ? "s" : ""} extra × {nights}n × {rooms}h
+                        </span>
+                        <span className="font-semibold">${bedsSubtotal.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {selectedRoom && (
+                      <p className="text-[10px] text-white/30 pt-1">{selectedRoom.name} · {adults + children} huésped{adults + children !== 1 ? "es" : ""}</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-white/25 text-xs italic">Selecciona fechas para ver el precio</p>
+                )}
+              </div>
+
+              <div className="border-t border-white/10 pt-5 mb-6 flex justify-between items-end">
+                <span className="text-xs font-bold text-white/50 uppercase tracking-wider">Total</span>
+                <span className="text-3xl font-black">
+                  {nights > 0 ? `$${grandTotal.toLocaleString()}` : "—"}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                disabled={!step1Valid}
+                onClick={() => step1Valid && setStep(2)}
+                className="w-full bg-[#C9A87C] hover:bg-[#C9A87C]/80 disabled:bg-white/10 disabled:text-white/30 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-colors shadow-lg shadow-[#C9A87C]/20 disabled:shadow-none"
+              >
+                Continuar →
+              </button>
+
+              {(!checkIn || !checkOut) && (
+                <p className="text-[10px] text-white/25 text-center mt-2">Selecciona fechas para continuar</p>
+              )}
+              {checkIn && checkOut && nights <= 0 && (
+                <p className="text-[10px] text-rose-400 text-center mt-2">El check-out debe ser posterior al check-in</p>
+              )}
+            </div>
+          </div>
+
+        </div>
       </div>
     </div>
   );
