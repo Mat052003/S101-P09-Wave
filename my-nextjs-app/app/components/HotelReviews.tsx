@@ -221,7 +221,7 @@ function GoogleReviewCard({ review }: { review: GoogleReview }) {
   );
 }
 
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import ReviewForm from "./ReviewForm";
 
 // ── Main component ──────────────────────────────────────────────

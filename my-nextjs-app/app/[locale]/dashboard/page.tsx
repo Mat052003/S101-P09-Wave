@@ -48,7 +48,7 @@ export default async function DashboardPage({
 
   async function handleSignOut() {
     "use server";
-    await signOut({ redirectTo: "/auth/login" });
+    await signOut({ redirectTo: `/${locale}/auth/login` });
   }
 
   return (

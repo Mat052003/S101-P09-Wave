@@ -5,6 +5,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { useLocale } from "next-intl";
 
 const NAV = [
   {
@@ -39,6 +40,7 @@ const NAV = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const locale = useLocale();
   const [open, setOpen]         = useState(true);
   const [expanded, setExpanded] = useState<string[]>(["Mis Hoteles", "Otros"]);
 
@@ -123,7 +125,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Footer */}
         <div className="border-t border-white/10 p-3 shrink-0">
           <button
-            onClick={() => signOut({ callbackUrl: "/auth/login" })}
+            onClick={() => signOut({ callbackUrl: `/${locale}/auth/login` })}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/50 hover:bg-white/10 hover:text-white transition-colors">
             <div className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0" />
             {open && <span className="text-sm font-medium">Cerrar sesión</span>}

@@ -456,7 +456,7 @@ export default function HotelsPage() {
                     <article key={hotel.id}
                       className={`overflow-hidden flex flex-col rounded-3xl border transition ${selected ? "border-[#153243]/40 bg-[#D9E0D4] shadow-[0_16px_34px_rgba(21,50,67,0.18)]" : "border-[#153243]/16 bg-[#EEF0EB] hover:bg-[#DDE4D8] hover:border-[#153243]/34 hover:shadow-[0_10px_22px_rgba(21,50,67,0.14)]"}`}>
                       <div onClick={() => toggleHotelForCompare(hotel.id)}
-                        className="aspect-[4/3] overflow-hidden bg-[#284B63]/10 cursor-pointer relative group shrink-0"
+                        className="h-[180px] overflow-hidden bg-[#284B63]/10 cursor-pointer relative group shrink-0"
                         role="button" tabIndex={0}
                         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleHotelForCompare(hotel.id); } }}>
                         <img src={getHotelImage(hotel)} alt={hotel.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -476,8 +476,6 @@ export default function HotelsPage() {
                             <p className="text-[10px] sm:text-xs uppercase tracking-[0.14em] text-[#284B63]/80 mt-1">{hotel.location}</p>
                           </div>
                         </div>
-
-                        <p className="line-clamp-3 text-xs sm:text-sm text-[#284B63]/88 leading-6 mb-4">{hotel.description}</p>
 
                         <div className="mt-auto">
                           <div className="flex flex-wrap gap-2 mb-4">
