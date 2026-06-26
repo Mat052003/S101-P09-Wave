@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
       price, extraBedPrice, totalRooms, isActive, stars,
       services, exclusiveFeatures, images,
       latitude, longitude, address,
+      roomTypes,
     } = body;
 
     if (!name || !description || !location || !price) {
@@ -67,6 +68,20 @@ export async function POST(req: NextRequest) {
         ownerId:   session.user.id,
       },
     });
+
+    if (Array.isArray(roomTypes) && roomTypes.length > 0) {
+      await prisma.roomType.createMany({
+        data: roomTypes.map((r: { id?: string; name: string; capacity: number; count: number; pricePerNight: number; maxExtraBeds: number; extraBedPrice: number }) => ({
+          hotelId:       hotel.id,
+          name:          r.name,
+          capacity:      Number(r.capacity),
+          count:         Number(r.count),
+          pricePerNight: Number(r.pricePerNight),
+          maxExtraBeds:  Number(r.maxExtraBeds),
+          extraBedPrice: Number(r.extraBedPrice),
+        })),
+      });
+    }
 
     return NextResponse.json(hotel);
   } catch (error) {

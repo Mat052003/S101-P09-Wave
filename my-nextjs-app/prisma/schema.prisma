@@ -100,6 +100,7 @@ model Hotel {
   blockedDates      BlockedDate[]
   experiences       HotelExperience[]
   extraServices     HotelExtraService[]
+  roomTypes         RoomType[]
 }
 
 enum ExperienceType {
@@ -269,4 +270,18 @@ model HotelExtraService {
   extraService ExtraService @relation(fields: [extraServiceId], references: [id], onDelete: Cascade)
 
   @@id([hotelId, extraServiceId])
+}
+
+model RoomType {
+  id            String   @id @default(cuid())
+  hotelId       String
+  name          String
+  capacity      Int
+  count         Int
+  pricePerNight Float
+  maxExtraBeds  Int      @default(0)
+  extraBedPrice Float    @default(0)
+  createdAt     DateTime @default(now())
+
+  hotel Hotel @relation(fields: [hotelId], references: [id], onDelete: Cascade)
 }

@@ -6,7 +6,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const hotel = await prisma.hotel.findUnique({ where: { id } });
+  const hotel = await prisma.hotel.findUnique({ where: { id }, include: { roomTypes: true } });
   if (!hotel) return NextResponse.json({ error: "Hotel no encontrado" }, { status: 404 });
   return NextResponse.json(hotel);
 }
