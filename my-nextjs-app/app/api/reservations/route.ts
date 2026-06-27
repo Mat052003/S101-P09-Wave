@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { hotelId, checkIn, checkOut, guests, rooms = 1, extras } = await req.json();
+    const { hotelId, checkIn, checkOut, guests, rooms = 1, extras, roomTypeId } = await req.json();
 
     if (!hotelId || !checkIn || !checkOut) {
       return NextResponse.json({ error: "Datos incompletos" }, { status: 400 });
@@ -69,10 +69,22 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
+    // ── Resolver precio base según roomType o precio base del hotel ─────────
+    let nightlyPrice = hotel.price;
+    let bedPrice     = hotel.extraBedPrice;
+
+    if (roomTypeId) {
+      const roomType = await prisma.roomType.findUnique({ where: { id: roomTypeId } });
+      if (roomType) {
+        nightlyPrice = roomType.pricePerNight;
+        bedPrice     = roomType.extraBedPrice;
+      }
+    }
+
     // ── Calcular precio ──────────────────────────────────────
     const nights      = Math.ceil((outDate.getTime() - inDate.getTime()) / (1000 * 60 * 60 * 24));
     const extraBeds   = Math.max(0, guests - 2);
-    const pricePerRoom = hotel.price + (extraBeds * hotel.extraBedPrice);
+    const pricePerRoom = nightlyPrice + (extraBeds * bedPrice);
     const baseTotal   = pricePerRoom * nights * rooms;
     const extrasTotal = (extras || []).reduce(
       (sum: number, e: { price: number; quantity: number }) => sum + e.price * e.quantity,

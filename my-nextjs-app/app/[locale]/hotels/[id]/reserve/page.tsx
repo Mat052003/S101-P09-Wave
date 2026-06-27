@@ -237,10 +237,11 @@ export default function ReservePage() {
         hotelId,
         checkIn,
         checkOut,
-        guests:     adults + children,
+        guests:      adults + children,
         rooms,
-        totalPrice: grandTotal,
-        extras:     selectedExtras,
+        totalPrice:  grandTotal,
+        extras:      selectedExtras,
+        roomTypeId:  selectedRoomTypeId ?? undefined,
       }),
     });
 
