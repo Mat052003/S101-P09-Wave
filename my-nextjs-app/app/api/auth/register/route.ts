@@ -9,7 +9,9 @@ const PASSWORD_POLICY = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, email, password } = await req.json();
+    const { name, email, password, role } = await req.json();
+    const normalizedRole: "USER" | "ADMIN" =
+      role === "ADMIN" ? "ADMIN" : "USER";
     const normalizedName = (name as string | undefined)?.trim();
     const normalizedEmail = (email as string | undefined)?.trim().toLowerCase();
 
@@ -47,10 +49,11 @@ export async function POST(req: NextRequest) {
           data: {
             name: existingUser.name ?? normalizedName,
             password: hashedPassword,
+            role: normalizedRole,
           },
         })
       : await prisma.user.create({
-          data: { name: normalizedName, email: normalizedEmail, password: hashedPassword },
+          data: { name: normalizedName, email: normalizedEmail, password: hashedPassword, role: normalizedRole },
         });
 
     const otpCode = crypto.randomInt(100000, 999999).toString();
