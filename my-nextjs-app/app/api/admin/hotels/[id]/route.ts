@@ -11,7 +11,7 @@ export async function GET(
   if (!session?.user?.id) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
   const { id } = await params;
-  const hotel = await prisma.hotel.findUnique({ where: { id } });
+  const hotel = await prisma.hotel.findUnique({ where: { id }, include: { roomTypes: true } });
 
   if (!hotel) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
@@ -41,26 +41,46 @@ export async function PATCH(
 
   try {
     const body = await req.json();
+    const { roomTypes, ...fields } = body;
+
     const updated = await prisma.hotel.update({
       where: { id },
       data: {
-        name: body.name,
-        description: body.description,
-        location: body.location,
-        experienceType: body.experienceType,
-        price: body.price !== undefined ? Number(body.price) : undefined,
-        extraBedPrice: body.extraBedPrice !== undefined ? Number(body.extraBedPrice) : undefined,
-        totalRooms: body.totalRooms !== undefined ? Number(body.totalRooms) : undefined,
-        isActive: body.isActive !== undefined ? body.isActive : undefined,
-        stars: body.stars !== undefined ? Number(body.stars) : undefined,
-        services: body.services,
-        exclusiveFeatures: body.exclusiveFeatures,
-        images: body.images,
-        latitude: body.latitude !== undefined ? (body.latitude ? Number(body.latitude) : null) : undefined,
-        longitude: body.longitude !== undefined ? (body.longitude ? Number(body.longitude) : null) : undefined,
-        address: body.address !== undefined ? (body.address || null) : undefined,
+        name: fields.name,
+        description: fields.description,
+        location: fields.location,
+        experienceType: fields.experienceType,
+        price:         fields.price         !== undefined ? Number(fields.price)         : undefined,
+        extraBedPrice: fields.extraBedPrice !== undefined ? Number(fields.extraBedPrice) : undefined,
+        totalRooms:    fields.totalRooms    !== undefined ? Number(fields.totalRooms)    : undefined,
+        isActive:      fields.isActive      !== undefined ? fields.isActive              : undefined,
+        stars:         fields.stars         !== undefined ? Number(fields.stars)         : undefined,
+        services:          fields.services,
+        exclusiveFeatures: fields.exclusiveFeatures,
+        images:            fields.images,
+        latitude:  fields.latitude  !== undefined ? (fields.latitude  ? Number(fields.latitude)  : null) : undefined,
+        longitude: fields.longitude !== undefined ? (fields.longitude ? Number(fields.longitude) : null) : undefined,
+        address:   fields.address   !== undefined ? (fields.address   || null)                           : undefined,
       },
     });
+
+    if (Array.isArray(roomTypes)) {
+      await prisma.roomType.deleteMany({ where: { hotelId: id } });
+      if (roomTypes.length > 0) {
+        await prisma.roomType.createMany({
+          data: roomTypes.map((r: { name: string; capacity: number; count: number; pricePerNight: number; maxExtraBeds: number; extraBedPrice: number }) => ({
+            hotelId:       id,
+            name:          r.name,
+            capacity:      Number(r.capacity),
+            count:         Number(r.count),
+            pricePerNight: Number(r.pricePerNight),
+            maxExtraBeds:  Number(r.maxExtraBeds),
+            extraBedPrice: Number(r.extraBedPrice),
+          })),
+        });
+      }
+    }
+
     return NextResponse.json(updated);
   } catch (error) {
     console.error(error);

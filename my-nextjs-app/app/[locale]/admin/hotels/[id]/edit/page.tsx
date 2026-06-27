@@ -26,15 +26,17 @@ type RoomType = {
   extraBedPrice: number;
 };
 
+const STANDARD_ID = "__standard__";
+
 function mkRoom(): RoomType {
   return {
     id: crypto.randomUUID(),
     name: "Estándar",
-    capacity: 2,
-    count: 1,
+    capacity: 0,
+    count: 0,
     pricePerNight: 0,
-    maxExtraBeds: 1,
-    extraBedPrice: 50,
+    maxExtraBeds: 0,
+    extraBedPrice: 0,
   };
 }
 
@@ -71,7 +73,7 @@ export default function EditHotelPage() {
   const [urlInput, setUrlInput]   = useState("");
   const fileRef                   = useRef<HTMLInputElement>(null);
 
-  // Tipos de habitación
+  // Tipos de habitación — poblados desde la DB al cargar
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
 
   // ── Carga inicial ─────────────────────────────────────────
@@ -101,8 +103,36 @@ export default function EditHotelPage() {
         setServices(Array.isArray(data.services) ? data.services.join(", ") : (data.services ?? ""));
         setExclusiveFeatures(Array.isArray(data.exclusiveFeatures) ? data.exclusiveFeatures.join(", ") : (data.exclusiveFeatures ?? ""));
         setImageList(Array.isArray(data.images) ? data.images : []);
+
+        const basePrice = data.price ?? 0;
+
         if (Array.isArray(data.roomTypes) && data.roomTypes.length > 0) {
-          setRoomTypes(data.roomTypes.map((r: RoomType) => ({ ...r, id: r.id ?? crypto.randomUUID() })));
+          const standardIdx = data.roomTypes.findIndex((r: RoomType) => r.name === "Estándar");
+          let loaded: RoomType[];
+          if (standardIdx !== -1) {
+            // Mapear la Estándar existente con STANDARD_ID para que sea ineliminable
+            loaded = data.roomTypes.map((r: RoomType, i: number) =>
+              i === standardIdx ? { ...r, id: STANDARD_ID } : { ...r }
+            );
+          } else {
+            // No hay Estándar en la DB — prepend una sintética con el precio base
+            loaded = [
+              { id: STANDARD_ID, name: "Estándar", capacity: 2, count: 1, pricePerNight: basePrice, maxExtraBeds: 1, extraBedPrice: 50 },
+              ...data.roomTypes.map((r: RoomType) => ({ ...r })),
+            ];
+          }
+          setRoomTypes(loaded);
+        } else {
+          // Sin roomTypes en DB — crear Estándar sintética con el precio base
+          setRoomTypes([{
+            id: STANDARD_ID,
+            name: "Estándar",
+            capacity: 2,
+            count: 1,
+            pricePerNight: basePrice,
+            maxExtraBeds: 1,
+            extraBedPrice: 50,
+          }]);
         }
       } catch {
         setError("Error de red al cargar el hotel");
@@ -112,6 +142,21 @@ export default function EditHotelPage() {
     }
     load();
   }, [hotelId]);
+
+  // Mantener precio de la habitación Estándar sincronizado con el precio base
+  useEffect(() => {
+    const base = parseFloat(price);
+    setRoomTypes((prev) =>
+      prev.map((r) =>
+        r.id === STANDARD_ID ? { ...r, pricePerNight: isNaN(base) ? 0 : base } : r
+      )
+    );
+  }, [price]);
+
+  // Validación: suma de habitaciones vs. total del hotel
+  const assignedRooms = roomTypes.reduce((sum, r) => sum + (r.count || 0), 0);
+  const totalRoomsNum = parseInt(totalRooms) || 0;
+  const roomsOverflow = totalRoomsNum > 0 && assignedRooms > totalRoomsNum;
 
   // ── helpers: imágenes ─────────────────────────────────────
   function addUrls() {
@@ -142,8 +187,11 @@ export default function EditHotelPage() {
   }
 
   // ── helpers: room types ───────────────────────────────────
-  function addRoom()  { setRoomTypes((prev) => [...prev, mkRoom()]); }
-  function removeRoom(id: string) { setRoomTypes((prev) => prev.filter((r) => r.id !== id)); }
+  function addRoom() { setRoomTypes((prev) => [...prev, mkRoom()]); }
+  function removeRoom(id: string) {
+    if (id === STANDARD_ID) return;
+    setRoomTypes((prev) => prev.filter((r) => r.id !== id));
+  }
   function patchRoom(id: string, patch: Partial<Omit<RoomType, "id">>) {
     setRoomTypes((prev) => prev.map((r) => r.id === id ? { ...r, ...patch } : r));
   }
@@ -297,7 +345,14 @@ export default function EditHotelPage() {
           {/* ── Tipos de habitación ──────────────────────────────── */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="text-xs font-bold text-[#0B1F2D]/50 uppercase tracking-wider">Tipos de habitación</label>
+              <div>
+                <label className="text-xs font-bold text-[#0B1F2D]/50 uppercase tracking-wider">Tipos de habitación</label>
+                {totalRooms && (
+                  <p className={`text-[10px] font-semibold mt-0.5 ${roomsOverflow ? "text-rose-500" : "text-[#0B1F2D]/35"}`}>
+                    Total asignado: {assignedRooms} / {totalRooms}
+                  </p>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={addRoom}
@@ -307,97 +362,113 @@ export default function EditHotelPage() {
               </button>
             </div>
 
-            {roomTypes.length === 0 && (
-              <p className="text-xs text-[#0B1F2D]/35 italic border border-dashed border-[#0B1F2D]/15 rounded-xl px-4 py-5 text-center">
-                Sin tipos de habitación. Haz clic en &quot;+ Agregar&quot; para añadir uno.
-              </p>
-            )}
-
             <div className="space-y-3">
-              {roomTypes.map((room) => (
-                <div key={room.id} className="border border-[#0B1F2D]/12 rounded-xl p-4 bg-[#FAF6F0]">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold text-[#0B1F2D]/60 uppercase tracking-wider">Tipo de pieza</span>
-                    <button
-                      type="button"
-                      onClick={() => removeRoom(room.id)}
-                      className="text-[#0B1F2D]/30 hover:text-rose-500 transition-colors text-lg leading-none"
-                      aria-label="Eliminar tipo"
-                    >
-                      ×
-                    </button>
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="block text-[10px] font-semibold text-[#0B1F2D]/40 mb-1 uppercase tracking-wider">Nombre</label>
-                    <select
-                      value={ROOM_NAMES.includes(room.name) ? room.name : "__custom__"}
-                      onChange={(e) => {
-                        if (e.target.value !== "__custom__") patchRoom(room.id, { name: e.target.value });
-                      }}
-                      className={F}
-                    >
-                      {ROOM_NAMES.map((n) => <option key={n} value={n}>{n}</option>)}
-                      {!ROOM_NAMES.includes(room.name) && <option value="__custom__">{room.name}</option>}
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3 mb-3">
-                    <div>
-                      <label className="block text-[10px] font-semibold text-[#0B1F2D]/40 mb-1 uppercase tracking-wider">Capacidad (personas)</label>
-                      <input
-                        type="number" min={1} max={10}
-                        value={room.capacity}
-                        onChange={(e) => patchRoom(room.id, { capacity: parseInt(e.target.value) || 1 })}
-                        className={F}
-                      />
+              {roomTypes.map((room) => {
+                const isStandard = room.id === STANDARD_ID;
+                return (
+                  <div key={room.id} className="border border-[#0B1F2D]/12 rounded-xl p-4 bg-[#FAF6F0]">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-bold text-[#0B1F2D]/60 uppercase tracking-wider">
+                        {isStandard ? "Habitación base (fija)" : "Tipo de pieza"}
+                      </span>
+                      {!isStandard && (
+                        <button
+                          type="button"
+                          onClick={() => removeRoom(room.id)}
+                          className="text-[#0B1F2D]/30 hover:text-rose-500 transition-colors text-lg leading-none"
+                          aria-label="Eliminar tipo"
+                        >
+                          ×
+                        </button>
+                      )}
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-semibold text-[#0B1F2D]/40 mb-1 uppercase tracking-wider">Cantidad</label>
-                      <input
-                        type="number" min={1}
-                        value={room.count}
-                        onChange={(e) => patchRoom(room.id, { count: parseInt(e.target.value) || 1 })}
-                        className={F}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-semibold text-[#0B1F2D]/40 mb-1 uppercase tracking-wider">Precio/noche (USD)</label>
-                      <input
-                        type="number" min={0}
-                        value={room.pricePerNight}
-                        onChange={(e) => patchRoom(room.id, { pricePerNight: parseFloat(e.target.value) || 0 })}
-                        className={F}
-                      />
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[10px] font-semibold text-[#0B1F2D]/40 mb-1 uppercase tracking-wider">Máx. camas extra</label>
+                    {/* Fila 1: nombre */}
+                    <div className="mb-3">
+                      <label className="block text-[10px] font-semibold text-[#0B1F2D]/40 mb-1 uppercase tracking-wider">Nombre</label>
                       <select
-                        value={room.maxExtraBeds}
-                        onChange={(e) => patchRoom(room.id, { maxExtraBeds: parseInt(e.target.value) })}
-                        className={F}
+                        value={ROOM_NAMES.includes(room.name) ? room.name : "__custom__"}
+                        disabled={isStandard}
+                        onChange={(e) => {
+                          if (!isStandard && e.target.value !== "__custom__") patchRoom(room.id, { name: e.target.value });
+                        }}
+                        className={`${F} ${isStandard ? "opacity-60 cursor-not-allowed" : ""}`}
                       >
-                        <option value={0}>0 — Sin camas extra</option>
-                        <option value={1}>1 cama extra</option>
-                        <option value={2}>2 camas extra</option>
+                        {ROOM_NAMES.map((n) => <option key={n} value={n}>{n}</option>)}
+                        {!ROOM_NAMES.includes(room.name) && <option value="__custom__">{room.name}</option>}
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-semibold text-[#0B1F2D]/40 mb-1 uppercase tracking-wider">Precio cama extra (USD)</label>
-                      <input
-                        type="number" min={0}
-                        value={room.extraBedPrice}
-                        onChange={(e) => patchRoom(room.id, { extraBedPrice: parseFloat(e.target.value) || 0 })}
-                        className={F}
-                      />
+
+                    {/* Fila 2: capacidad, cantidad, precio/noche */}
+                    <div className="grid grid-cols-3 gap-3 mb-3">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-[#0B1F2D]/40 mb-1 uppercase tracking-wider">Capacidad (personas)</label>
+                        <input
+                          type="number" min={1} max={10}
+                          value={room.capacity || ""}
+                          placeholder="Ej: 2"
+                          onChange={(e) => patchRoom(room.id, { capacity: parseFloat(e.target.value) || 0 })}
+                          className={F}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-[#0B1F2D]/40 mb-1 uppercase tracking-wider">Cantidad</label>
+                        <input
+                          type="number" min={1}
+                          value={room.count || ""}
+                          placeholder="Ej: 10"
+                          onChange={(e) => patchRoom(room.id, { count: parseFloat(e.target.value) || 0 })}
+                          className={F}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-[#0B1F2D]/40 mb-1 uppercase tracking-wider">Precio/noche (USD)</label>
+                        <input
+                          type="number" min={0}
+                          value={room.pricePerNight || ""}
+                          readOnly={isStandard}
+                          placeholder={isStandard ? "Igual al precio base" : `Ej: $180 (Estándar: $${price || 0})`}
+                          onChange={(e) => { if (!isStandard) patchRoom(room.id, { pricePerNight: parseFloat(e.target.value) || 0 }); }}
+                          className={`${F} ${isStandard ? "cursor-default select-none" : ""}`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Fila 3: max camas extra, precio cama extra */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-[#0B1F2D]/40 mb-1 uppercase tracking-wider">Máx. camas extra</label>
+                        <select
+                          value={room.maxExtraBeds}
+                          onChange={(e) => patchRoom(room.id, { maxExtraBeds: parseInt(e.target.value) })}
+                          className={F}
+                        >
+                          <option value={0}>0 — Sin camas extra</option>
+                          <option value={1}>1 cama extra</option>
+                          <option value={2}>2 camas extra</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-[#0B1F2D]/40 mb-1 uppercase tracking-wider">Precio cama extra (USD)</label>
+                        <input
+                          type="number" min={0}
+                          value={room.extraBedPrice || ""}
+                          placeholder="Ej: 50"
+                          onChange={(e) => patchRoom(room.id, { extraBedPrice: parseFloat(e.target.value) || 0 })}
+                          className={F}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
+
+            {roomsOverflow && (
+              <p className="text-xs text-rose-500 font-medium mt-2">
+                La suma de habitaciones ({assignedRooms}) supera el total declarado ({totalRooms}). Ajusta las cantidades.
+              </p>
+            )}
           </div>
 
           {/* ── Imágenes (dual tab) ──────────────────────────────── */}
@@ -515,7 +586,7 @@ export default function EditHotelPage() {
             </Link>
             <button
               onClick={handleSubmit}
-              disabled={submitting || !name || !description || !location || !price}
+              disabled={submitting || !name || !description || !location || !price || roomsOverflow}
               className="bg-[#C9A87C] hover:bg-[#C9A87C]/80 disabled:bg-[#0B1F2D]/20 text-white text-sm font-bold px-8 py-3 rounded-xl transition-colors shadow-lg shadow-[#C9A87C]/30 disabled:shadow-none disabled:cursor-not-allowed"
             >
               {submitting ? "Guardando..." : "Guardar cambios ✓"}
