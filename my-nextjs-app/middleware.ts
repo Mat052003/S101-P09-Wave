@@ -1,10 +1,19 @@
-import createMiddleware from "next-intl/middleware";
-import { routing } from "./i18n/routing";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export default createMiddleware(routing);
+export function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  
+  // Si ya tiene locale, continuar
+  if (pathname.startsWith("/es") || pathname.startsWith("/en")) {
+    return NextResponse.next();
+  }
+  
+  // Redirigir a /es por defecto
+  return NextResponse.redirect(new URL(`/es${pathname}`, request.url));
+}
 
 export const config = {
-  runtime: "nodejs",
   matcher: [
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)",
   ],
